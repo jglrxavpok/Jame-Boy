@@ -56,26 +56,21 @@ public class JameBoy
         MenuBar bar = new MenuBar();
         Menu fileMenu = new Menu("File");
         MenuItem open = new MenuItem("Open ROM");
-        open.addActionListener(new ActionListener()
-        {
-            @Override
-            public void actionPerformed(ActionEvent evt)
+        open.addActionListener(evt -> {
+            chooser.showOpenDialog(null);
+
+            File f = chooser.getSelectedFile();
+            if(f != null)
             {
-                chooser.showOpenDialog(null);
-                
-                File f = chooser.getSelectedFile();
-                if(f != null)
+                try
                 {
-                    try
-                    {
-                        FileInputStream in = new FileInputStream(f);
-                        byte[] rom = read(in);
-                        emulator.load(rom);
-                    }
-                    catch(Exception e)
-                    {
-                        e.printStackTrace();
-                    }
+                    FileInputStream in = new FileInputStream(f);
+                    byte[] rom = read(in);
+                    emulator.load(rom);
+                }
+                catch(Exception e)
+                {
+                    e.printStackTrace();
                 }
             }
         });
