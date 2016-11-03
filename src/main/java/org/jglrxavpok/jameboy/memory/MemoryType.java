@@ -1,7 +1,6 @@
 package org.jglrxavpok.jameboy.memory;
 
-public interface MemoryType
-{
+public interface MemoryType {
 
     public void write(int index, int value);
 

@@ -1,27 +1,15 @@
 package org.jglrxavpok.jameboy;
 
-import java.awt.Menu;
-import java.awt.MenuBar;
-import java.awt.MenuItem;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.UIManager;
-
 import org.jglrxavpok.jameboy.graphics.GPU;
 import org.jglrxavpok.jameboy.graphics.Screen;
 import org.jglrxavpok.jameboy.input.Keyboard;
 import org.jglrxavpok.jameboy.input.Mouse;
 
-public class JameBoy
-{
+import javax.swing.*;
+import java.awt.*;
+import java.io.*;
+
+public class JameBoy {
 
     public static JameBoy emulator;
     public static JFrame mainFrame;
@@ -29,27 +17,33 @@ public class JameBoy
     public static Screen screen;
     public static EmulatorThread emulatorThread;
     private static JFileChooser chooser;
-    
-    public static void main(String[] args)
-    {
-        try
-        {
+    private GBMemory memory;
+    private boolean romLoaded;
+    private CPU cpu;
+    private GPU gpu;
+
+    public JameBoy() {
+        memory = new GBMemory();
+        cpu = new CPU();
+        cpu.setEmulator(this);
+        gpu = new GPU();
+    }
+
+    public static void main(String[] args) {
+        try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        }
-        catch (Exception e1)
-        {
+        } catch (Exception e1) {
             e1.printStackTrace();
         }
         chooser = new JFileChooser();
         loadEmulator();
     }
-    
-    private static void loadEmulator()
-    {
+
+    private static void loadEmulator() {
         mainFrame = new JFrame();
         scale = 6;
-        mainFrame.setSize(160*scale,144*scale);
-        screen = new Screen(160,144);
+        mainFrame.setSize(160 * scale, 144 * scale);
+        screen = new Screen(160, 144);
         mainFrame.setLocationRelativeTo(null);
         Mouse.init(mainFrame);
         Keyboard.init(mainFrame);
@@ -60,16 +54,12 @@ public class JameBoy
             chooser.showOpenDialog(null);
 
             File f = chooser.getSelectedFile();
-            if(f != null)
-            {
-                try
-                {
+            if (f != null) {
+                try {
                     FileInputStream in = new FileInputStream(f);
                     byte[] rom = read(in);
                     emulator.load(rom);
-                }
-                catch(Exception e)
-                {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -82,14 +72,12 @@ public class JameBoy
         emulatorThread = new EmulatorThread();
         emulatorThread.start();
     }
-    
-    public static byte[] read(InputStream stream) throws IOException
-    {
+
+    public static byte[] read(InputStream stream) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         int i;
         byte[] buffer = new byte[65565];
-        while((i = stream.read(buffer, 0, buffer.length)) != -1)
-        {
+        while ((i = stream.read(buffer, 0, buffer.length)) != -1) {
             baos.write(buffer, 0, i);
         }
         baos.flush();
@@ -97,48 +85,29 @@ public class JameBoy
         return baos.toByteArray();
     }
 
-    private GBMemory memory;
-    private boolean romLoaded;
-    private CPU cpu;
-    private GPU gpu;
-    
-    public JameBoy()
-    {
-        memory = new GBMemory();
-        cpu = new CPU();
-        cpu.setEmulator(this);
-        gpu = new GPU();
-    }
-    
-    public GBMemory getMemory()
-    {
+    public GBMemory getMemory() {
         return memory;
     }
-    
-    public CPU getCPU()
-    {
+
+    public CPU getCPU() {
         return cpu;
     }
-    
-    public GPU getGPU()
-    {
+
+    public GPU getGPU() {
         return gpu;
     }
 
-    protected void load(byte[] rom)
-    {
+    protected void load(byte[] rom) {
         romLoaded = false;
         memory.loadROM(rom);
         romLoaded = true;
     }
 
-    public boolean hasRomLoaded()
-    {
+    public boolean hasRomLoaded() {
         return romLoaded;
     }
 
-    public void doCycle()
-    {
+    public void doCycle() {
         cpu.doCycle();
     }
 
