@@ -2,7 +2,7 @@ package org.jglrxavpok.jameboy.memory;
 
 import java.nio.ByteBuffer;
 
-public class NoMBC implements MemoryController {
+public class NoMBC extends BaseMemoryController {
 
     private final ByteBuffer rom;
     private final ByteBuffer ram;
@@ -14,6 +14,7 @@ public class NoMBC implements MemoryController {
 
     @Override
     public void write(int index, byte value) {
+        super.write(index, value);
         if(index >= 0xA000 && index <= 0xBFFF) {
             ram.put(index - 0xA000, value);
         }
@@ -28,6 +29,6 @@ public class NoMBC implements MemoryController {
         if(index >= 0xA000 && index <= 0xBFFF) {
             return ram.get(index - 0xA000);
         }
-        return 0;
+        return super.read(index);
     }
 }

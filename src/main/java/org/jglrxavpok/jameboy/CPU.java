@@ -1,5 +1,7 @@
 package org.jglrxavpok.jameboy;
 
+import org.jglrxavpok.jameboy.memory.MemoryController;
+
 /**
  * Emulates a LR35902 CPU (used in Nintendo's Game Boy console)
  *
@@ -7,22 +9,27 @@ package org.jglrxavpok.jameboy;
  */
 public class CPU {
 
-    private int PC = 0x100;
-    private int SP = 0;
+    public int PC = 0x100;
+    public int SP = 0;
     private int clockCycles = 0;
     private JameBoyApp emulator;
-    private int A;
-    private int F;
-    private boolean Z;
-    private boolean N;
-    private boolean H;
-    private boolean C;
-    private int BC, DE, HL;
+    public byte A;
+    public byte F;
+    public boolean Z;
+    public boolean N;
+    public boolean H;
+    public boolean C;
+    public int BC, DE, HL;
     private boolean stop;
     private boolean halted;
+    private MemoryController memory;
 
     public void setEmulator(JameBoyApp emu) {
         this.emulator = emu;
+    }
+
+    public void setMemory(MemoryController memory) {
+        this.memory = memory;
     }
 
     public int doCycle() {
@@ -37,8 +44,8 @@ public class CPU {
         return (short) ((short) (nextByte()) | (nextByte() << 8));
     }
 
-    private int nextByte() {
-        return emulator.getMemory().getRawMemory()[PC++] & 0xFF;
+    private byte nextByte() {
+        return this.memory.read(PC++);
     }
 
     public void pushPart(int val) {
@@ -47,15 +54,28 @@ public class CPU {
     }
 
     public int popPart() {
-        int val = (emulator.getMemory().read(SP))
-                | ((emulator.getMemory().read(SP + 1)) << 8);
+        int val = (this.memory.read(SP))
+                | ((this.memory.read(SP + 1)) << 8);
         SP += 2;
         return val;
     }
 
     public void writePart(int pos, int val) {
-        emulator.getMemory().write(pos, (val & 0xFF));
-        emulator.getMemory().write(pos + 1, ((val >> 8) & 0xFF));
+        this.memory.write(pos, (byte) (val & 0xFF));
+        this.memory.write(pos + 1, (byte) ((val >> 8) & 0xFF));
+    }
+
+    public void hardGoto(int index) {
+        PC = index;
+    }
+
+    public void hardReset() {
+        A = 0;
+        F = 0;
+        Z = N = C = H = false;
+        BC = DE = HL = 0;
+        SP = 0;
+        PC = 0x100;
     }
 
     private int executeOP(int opcode) {
@@ -920,7 +940,7 @@ public class CPU {
         return clockCycles;
     }
 
-    private void op_CALL_NC() {
+    public void op_CALL_NC() {
         clockCycles = 12;
         int address = nextPart();
         if (!Z) {
@@ -930,11 +950,11 @@ public class CPU {
         }
     }
 
-    private void op_NULL() {
+    public void op_NULL() {
         throw new RuntimeException("Invalid opcode");
     }
 
-    private void op_JP_NC() {
+    public void op_JP_NC() {
         int address = nextPart();
         clockCycles = 12;
         if (!C) {
@@ -943,12 +963,12 @@ public class CPU {
         }
     }
 
-    private void op_POP_DE() {
+    public void op_POP_DE() {
         DE = popPart();
         clockCycles = 12;
     }
 
-    private void op_RET_NC() {
+    public void op_RET_NC() {
         clockCycles = 8;
         int address = nextPart();
         if (!C) {
@@ -958,24 +978,24 @@ public class CPU {
         }
     }
 
-    private void op_RST_08H() {
+    public void op_RST_08H() {
         rst(0x08);
         clockCycles = 16;
     }
 
-    private void op_ADC_A() {
+    public void op_ADC_A() {
         adc(nextByte());
         clockCycles = 8;
     }
 
-    private void op_CALL() {
+    public void op_CALL() {
         clockCycles = 24;
         int address = nextPart();
         pushPart(PC);
         PC = address;
     }
 
-    private void op_CALL_Z() {
+    public void op_CALL_Z() {
         clockCycles = 12;
         int address = nextPart();
         if (Z) {
@@ -985,7 +1005,7 @@ public class CPU {
         }
     }
 
-    private void op_CBCode() {
+    public void op_CBCode() {
         int b = nextByte();
         if ((b & 0xF) == 0x6 || (b & 0xF) == 0xE) {
             clockCycles = 16;
@@ -995,7 +1015,7 @@ public class CPU {
         executeCBCode(b);
     }
 
-    private void op_JP_Z() {
+    public void op_JP_Z() {
         clockCycles = 12;
         int address = nextPart();
         if (Z) {
@@ -1004,12 +1024,12 @@ public class CPU {
         }
     }
 
-    private void op_RET() {
+    public void op_RET() {
         PC = popPart();
         clockCycles = 16;
     }
 
-    private void op_RET_Z() {
+    public void op_RET_Z() {
         clockCycles = 8;
         if (Z) {
             PC = popPart();
@@ -1017,22 +1037,22 @@ public class CPU {
         }
     }
 
-    private void op_RST_00H() {
+    public void op_RST_00H() {
         rst(0x00);
         clockCycles = 16;
     }
 
-    private void op_ADD_A() {
+    public void op_ADD_A() {
         clockCycles = 8;
         add(nextByte());
     }
 
-    private void op_PUSH_BC() {
+    public void op_PUSH_BC() {
         pushPart(BC);
         clockCycles = 16;
     }
 
-    private void op_CALL_NZ() {
+    public void op_CALL_NZ() {
         clockCycles = 12;
         int address = nextPart();
         if (!Z) {
@@ -1042,12 +1062,12 @@ public class CPU {
         }
     }
 
-    private void op_JP() {
+    public void op_JP() {
         clockCycles = 16;
         PC = nextPart();
     }
 
-    private void op_JP_NZ() {
+    public void op_JP_NZ() {
         clockCycles = 12;
         int address = nextPart();
         if (!Z) {
@@ -1056,12 +1076,12 @@ public class CPU {
         }
     }
 
-    private void op_POP_BC() {
+    public void op_POP_BC() {
         clockCycles = 12;
         BC = popPart();
     }
 
-    private void op_RET_NZ() {
+    public void op_RET_NZ() {
         clockCycles = 8;
         if (!Z) {
             PC = popPart();
@@ -1069,684 +1089,684 @@ public class CPU {
         }
     }
 
-    private void op_CP_A() {
+    public void op_CP_A() {
         cp(A);
         clockCycles = 4;
     }
 
-    private void op_CP_HL_VALUE() {
-        cp(emulator.getMemory().read(HL));
+    public void op_CP_HL_VALUE() {
+        cp(this.memory.read(HL));
         clockCycles = 8;
     }
 
-    private void op_CP_L() {
+    public void op_CP_L() {
         cp(getLower(HL));
         clockCycles = 4;
     }
 
-    private void op_CP_H() {
+    public void op_CP_H() {
         cp(getUpper(HL));
         clockCycles = 4;
     }
 
-    private void op_CP_E() {
+    public void op_CP_E() {
         cp(getUpper(DE));
         clockCycles = 4;
     }
 
-    private void op_CP_D() {
+    public void op_CP_D() {
         cp(getLower(DE));
         clockCycles = 4;
     }
 
-    private void op_CP_C() {
+    public void op_CP_C() {
         cp(getLower(BC));
         clockCycles = 4;
     }
 
-    private void op_CP_B() {
+    public void op_CP_B() {
         cp(getUpper(BC));
         clockCycles = 4;
     }
 
-    private void op_OR_A() {
+    public void op_OR_A() {
         or(A);
         clockCycles = 4;
     }
 
-    private void op_OR_HL_VALUE() {
-        or(emulator.getMemory().read(HL));
+    public void op_OR_HL_VALUE() {
+        or(this.memory.read(HL));
         clockCycles = 4;
     }
 
-    private void op_OR_L() {
+    public void op_OR_L() {
         or(getLower(HL));
         clockCycles = 4;
     }
 
-    private void op_OR_H() {
+    public void op_OR_H() {
         or(getUpper(HL));
         clockCycles = 4;
     }
 
-    private void op_OR_E() {
+    public void op_OR_E() {
         or(getLower(DE));
         clockCycles = 4;
     }
 
-    private void op_OR_D() {
+    public void op_OR_D() {
         or(getUpper(DE));
         clockCycles = 4;
     }
 
-    private void op_OR_C() {
+    public void op_OR_C() {
         or(getLower(BC));
         clockCycles = 4;
     }
 
-    private void op_OR_B() {
+    public void op_OR_B() {
         or(getUpper(BC));
         clockCycles = 4;
     }
 
-    private void op_XOR_A() {
+    public void op_XOR_A() {
         xor(A);
         clockCycles = 4;
     }
 
-    private void op_XOR_HL_VALUE() {
-        xor(emulator.getMemory().read(HL));
+    public void op_XOR_HL_VALUE() {
+        xor(this.memory.read(HL));
         clockCycles = 8;
     }
 
-    private void op_XOR_L() {
+    public void op_XOR_L() {
         xor(getLower(BC));
         clockCycles = 4;
     }
 
-    private void op_XOR_H() {
+    public void op_XOR_H() {
         xor(getUpper(HL));
         clockCycles = 4;
     }
 
-    private void op_XOR_E() {
+    public void op_XOR_E() {
         xor(getLower(DE));
         clockCycles = 4;
     }
 
-    private void op_XOR_D() {
+    public void op_XOR_D() {
         xor(getUpper(DE));
         clockCycles = 4;
     }
 
-    private void op_XOR_C() {
+    public void op_XOR_C() {
         xor(getLower(BC));
         clockCycles = 4;
     }
 
-    private void op_XOR_B() {
+    public void op_XOR_B() {
         xor(getUpper(BC));
         clockCycles = 4;
     }
 
-    private void op_AND_A() {
+    public void op_AND_A() {
         and(A);
         clockCycles = 4;
     }
 
-    private void op_AND_HL_VALUE() {
-        and(emulator.getMemory().read(HL));
+    public void op_AND_HL_VALUE() {
+        and(this.memory.read(HL));
         clockCycles = 8;
     }
 
-    private void op_AND_L() {
+    public void op_AND_L() {
         and(getLower(HL));
         clockCycles = 4;
     }
 
-    private void op_AND_H() {
+    public void op_AND_H() {
         and(getUpper(HL));
         clockCycles = 4;
     }
 
-    private void op_AND_E() {
+    public void op_AND_E() {
         and(getLower(DE));
         clockCycles = 4;
     }
 
-    private void op_AND_D() {
+    public void op_AND_D() {
         and(getUpper(DE));
         clockCycles = 4;
     }
 
-    private void op_AND_C() {
+    public void op_AND_C() {
         and(getLower(BC));
         clockCycles = 4;
     }
 
-    private void op_AND_B() {
+    public void op_AND_B() {
         and(getUpper(BC));
         clockCycles = 4;
     }
 
-    private void op_SBC_A_A() {
+    public void op_SBC_A_A() {
         sbc(A);
         clockCycles = 4;
     }
 
-    private void op_SBC_A_HL_VALUE() {
-        sbc(emulator.getMemory().read(HL));
+    public void op_SBC_A_HL_VALUE() {
+        sbc(this.memory.read(HL));
         clockCycles = 8;
     }
 
-    private void op_SBC_A_L() {
+    public void op_SBC_A_L() {
         sbc(getLower(HL));
         clockCycles = 4;
     }
 
-    private void op_SBC_A_H() {
+    public void op_SBC_A_H() {
         sbc(getUpper(HL));
         clockCycles = 4;
     }
 
-    private void op_SBC_A_E() {
+    public void op_SBC_A_E() {
         sbc(getLower(DE));
         clockCycles = 4;
     }
 
-    private void op_SBC_A_D() {
+    public void op_SBC_A_D() {
         sbc(getUpper(DE));
         clockCycles = 4;
     }
 
-    private void op_SBC_A_C() {
+    public void op_SBC_A_C() {
         sbc(getLower(BC));
         clockCycles = 4;
     }
 
-    private void op_SBC_A_B() {
+    public void op_SBC_A_B() {
         sbc(getUpper(BC));
         clockCycles = 4;
     }
 
-    private void op_SUB_A() {
+    public void op_SUB_A() {
         clockCycles = 4;
         sub(A);
     }
 
-    private void op_SUB_HL_VALUE() {
+    public void op_SUB_HL_VALUE() {
         clockCycles = 8;
-        sub(emulator.getMemory().read(HL));
+        sub(this.memory.read(HL));
     }
 
-    private void op_SUB_L() {
+    public void op_SUB_L() {
         clockCycles = 4;
         sub(getLower(HL));
     }
 
-    private void op_SUB_H() {
+    public void op_SUB_H() {
         clockCycles = 4;
         sub(getUpper(HL));
     }
 
-    private void op_SUB_E() {
+    public void op_SUB_E() {
         clockCycles = 4;
         sub(getLower(DE));
     }
 
-    private void op_SUB_D() {
+    public void op_SUB_D() {
         clockCycles = 4;
         sub(getUpper(DE));
     }
 
-    private void op_SUB_C() {
+    public void op_SUB_C() {
         clockCycles = 4;
         sub(getLower(BC));
     }
 
-    private void op_SUB_B() {
+    public void op_SUB_B() {
         clockCycles = 4;
         sub(getUpper(BC));
     }
 
-    private void op_ADC_A_A() {
+    public void op_ADC_A_A() {
         adc(A);
         clockCycles = 4;
     }
 
-    private void op_ADC_A_HL_VALUE() {
-        adc(emulator.getMemory().read(HL));
+    public void op_ADC_A_HL_VALUE() {
+        adc(this.memory.read(HL));
         clockCycles = 8;
     }
 
-    private void op_ADC_A_L() {
+    public void op_ADC_A_L() {
         adc(getLower(HL));
         clockCycles = 4;
     }
 
-    private void op_ADC_A_H() {
+    public void op_ADC_A_H() {
         adc(getUpper(HL));
         clockCycles = 4;
     }
 
-    private void op_ADC_A_E() {
+    public void op_ADC_A_E() {
         adc(getLower(DE));
         clockCycles = 4;
     }
 
-    private void op_ADC_A_D() {
+    public void op_ADC_A_D() {
         adc(getUpper(DE));
         clockCycles = 4;
     }
 
-    private void op_ADC_A_C() {
+    public void op_ADC_A_C() {
         adc(getLower(BC));
         clockCycles = 4;
     }
 
-    private void op_ADC_A_B() {
+    public void op_ADC_A_B() {
         adc(getUpper(BC));
         clockCycles = 4;
     }
 
-    private void op_ADD_A_A() {
+    public void op_ADD_A_A() {
         add(A);
         clockCycles = 4;
     }
 
-    private void op_ADD_A_HL_VALUE() {
-        add(emulator.getMemory().read(HL));
+    public void op_ADD_A_HL_VALUE() {
+        add(this.memory.read(HL));
         clockCycles = 8;
     }
 
-    private void op_ADD_A_L() {
+    public void op_ADD_A_L() {
         add(getLower(HL));
         clockCycles = 4;
     }
 
-    private void op_ADD_A_H() {
+    public void op_ADD_A_H() {
         add(getUpper(HL));
         clockCycles = 4;
     }
 
-    private void op_ADD_A_E() {
+    public void op_ADD_A_E() {
         add(getLower(DE));
         clockCycles = 4;
     }
 
-    private void op_ADD_A_D() {
+    public void op_ADD_A_D() {
         add(getUpper(DE));
         clockCycles = 4;
     }
 
-    private void op_ADD_A_C() {
+    public void op_ADD_A_C() {
         add(getLower(BC));
         clockCycles = 4;
     }
 
-    private void op_ADD_A_B() {
+    public void op_ADD_A_B() {
         add(getUpper(BC));
         clockCycles = 4;
     }
 
-    private void op_LD_A_A() {
+    public void op_LD_A_A() {
         A = A; // ???
         clockCycles = 4;
     }
 
-    private void op_LD_A_HL_VALUE() {
-        A = emulator.getMemory().read(HL);
-        clockCycles = 4;
+    public void op_LD_A_HL_VALUE() {
+        A = this.memory.read(HL);
+        clockCycles = 8;
     }
 
-    private void op_LD_A_L() {
+    public void op_LD_A_L() {
         A = getLower(HL);
         clockCycles = 4;
     }
 
-    private void op_LD_A_H() {
+    public void op_LD_A_H() {
         A = getUpper(HL);
         clockCycles = 4;
     }
 
-    private void op_LD_A_E() {
+    public void op_LD_A_E() {
         A = getLower(DE);
         clockCycles = 4;
     }
 
-    private void op_LD_A_D() {
+    public void op_LD_A_D() {
         A = getUpper(DE);
         clockCycles = 4;
     }
 
-    private void op_LD_A_C() {
+    public void op_LD_A_C() {
         A = getLower(BC);
         clockCycles = 4;
     }
 
-    private void op_LD_A_B() {
+    public void op_LD_A_B() {
         A = getUpper(BC);
         clockCycles = 4;
     }
 
-    private void op_LD_HL_VALUE_A() {
-        emulator.getMemory().write(HL, A);
+    public void op_LD_HL_VALUE_A() {
+        this.memory.write(HL, A);
         clockCycles = 8;
     }
 
-    private void op_HALT() {
+    public void op_HALT() {
         halted = true;
     }
 
-    private void op_LD_HL_VALUE_L() {
-        emulator.getMemory().write(HL, getLower(getRegistryValue("HL")));
+    public void op_LD_HL_VALUE_L() {
+        this.memory.write(HL, getLower(getRegistryValue("HL")));
         clockCycles = 8;
     }
 
-    private void op_LD_HL_VALUE_H() {
-        emulator.getMemory().write(HL, getUpper(getRegistryValue("HL")));
+    public void op_LD_HL_VALUE_H() {
+        this.memory.write(HL, getUpper(getRegistryValue("HL")));
         clockCycles = 8;
     }
 
-    private void op_LD_HL_VALUE_E() {
-        emulator.getMemory().write(HL, getLower(getRegistryValue("DE")));
+    public void op_LD_HL_VALUE_E() {
+        this.memory.write(HL, getLower(getRegistryValue("DE")));
         clockCycles = 8;
     }
 
-    private void op_LD_HL_VALUE_D() {
-        emulator.getMemory().write(HL, getUpper(getRegistryValue("DE")));
+    public void op_LD_HL_VALUE_D() {
+        this.memory.write(HL, getUpper(getRegistryValue("DE")));
         clockCycles = 8;
     }
 
-    private void op_LD_HL_VALUE_C() {
-        emulator.getMemory().write(HL, getLower(getRegistryValue("BC")));
+    public void op_LD_HL_VALUE_C() {
+        this.memory.write(HL, getLower(getRegistryValue("BC")));
         clockCycles = 8;
     }
 
-    private void op_LD_HL_VALUE_B() {
-        emulator.getMemory().write(HL, getUpper(getRegistryValue("BC")));
+    public void op_LD_HL_VALUE_B() {
+        this.memory.write(HL, getUpper(getRegistryValue("BC")));
         clockCycles = 8;
     }
 
-    private void op_LD_L_A() {
+    public void op_LD_L_A() {
         setLower("HL", A);
         clockCycles = 4;
     }
 
-    private void op_LD_L_HL_VALUE() {
-        setLower("HL", emulator.getMemory().read(HL));
+    public void op_LD_L_HL_VALUE() {
+        setLower("HL", this.memory.read(HL));
         clockCycles = 8;
     }
 
-    private void op_LD_L_L() {
+    public void op_LD_L_L() {
         setLower("HL", getLower(getRegistryValue("HL")));
         clockCycles = 4;
     }
 
-    private void op_LD_L_H() {
+    public void op_LD_L_H() {
         setLower("HL", getUpper(getRegistryValue("HL")));
         clockCycles = 4;
     }
 
-    private void op_LD_L_E() {
+    public void op_LD_L_E() {
         setLower("HL", getLower(getRegistryValue("DE")));
         clockCycles = 4;
     }
 
-    private void op_LD_L_D() {
+    public void op_LD_L_D() {
         setLower("HL", getUpper(getRegistryValue("DE")));
         clockCycles = 4;
     }
 
-    private void op_LD_L_C() {
+    public void op_LD_L_C() {
         setLower("HL", getLower(getRegistryValue("BC")));
         clockCycles = 4;
     }
 
-    private void op_LD_L_B() {
+    public void op_LD_L_B() {
         setLower("HL", getUpper(getRegistryValue("BC")));
         clockCycles = 4;
     }
 
-    private void op_LD_H_A() {
+    public void op_LD_H_A() {
         setUpper("HL", A);
         clockCycles = 4;
     }
 
-    private void op_LD_H_HL_VALUE() {
-        setUpper("HL", emulator.getMemory().read(HL));
+    public void op_LD_H_HL_VALUE() {
+        setUpper("HL", this.memory.read(HL));
         clockCycles = 8;
     }
 
-    private void op_LD_H_L() {
+    public void op_LD_H_L() {
         setUpper("HL", getLower(getRegistryValue("HL")));
         clockCycles = 4;
     }
 
-    private void op_LD_H_H() {
+    public void op_LD_H_H() {
         setUpper("HL", getUpper(getRegistryValue("HL")));
         clockCycles = 4;
     }
 
-    private void op_LD_H_E() {
+    public void op_LD_H_E() {
         setUpper("HL", getLower(getRegistryValue("DE")));
         clockCycles = 4;
     }
 
-    private void op_LD_H_D() {
+    public void op_LD_H_D() {
         setUpper("HL", getUpper(getRegistryValue("DE")));
         clockCycles = 4;
     }
 
-    private void op_LD_H_C() {
+    public void op_LD_H_C() {
         setUpper("HL", getLower(getRegistryValue("BC")));
         clockCycles = 4;
     }
 
-    private void op_LD_H_B() {
+    public void op_LD_H_B() {
         setUpper("HL", getUpper(getRegistryValue("BC")));
         clockCycles = 4;
     }
 
-    private void op_LD_E_A() {
+    public void op_LD_E_A() {
         setLower("DE", A);
         clockCycles = 4;
     }
 
-    private void op_LD_E_HL_VALUE() {
-        setLower("DE", emulator.getMemory().read(HL));
+    public void op_LD_E_HL_VALUE() {
+        setLower("DE", this.memory.read(HL));
         clockCycles = 4;
     }
 
-    private void op_LD_E_L() {
+    public void op_LD_E_L() {
         setLower("DE", getLower(getRegistryValue("HL")));
         clockCycles = 4;
     }
 
-    private void op_LD_E_H() {
+    public void op_LD_E_H() {
         setLower("DE", getUpper(getRegistryValue("HL")));
         clockCycles = 4;
     }
 
-    private void op_LD_E_E() {
+    public void op_LD_E_E() {
         setLower("DE", getLower(getRegistryValue("DE")));
         clockCycles = 4;
     }
 
-    private void op_LD_E_D() {
+    public void op_LD_E_D() {
         setLower("DE", getUpper(getRegistryValue("DE")));
         clockCycles = 4;
     }
 
-    private void op_LD_E_C() {
+    public void op_LD_E_C() {
         setLower("DE", getLower(getRegistryValue("BC")));
         clockCycles = 4;
     }
 
-    private void op_LD_E_B() {
+    public void op_LD_E_B() {
         setLower("DE", getUpper(getRegistryValue("BC")));
         clockCycles = 4;
     }
 
-    private void op_LD_D_A() {
+    public void op_LD_D_A() {
         setUpper("DE", A);
         clockCycles = 4;
     }
 
-    private void op_LD_D_HL_VALUE() {
-        setUpper("DE", emulator.getMemory().read(HL));
+    public void op_LD_D_HL_VALUE() {
+        setUpper("DE", this.memory.read(HL));
         clockCycles = 8;
     }
 
-    private void op_LD_D_L() {
+    public void op_LD_D_L() {
         setUpper("DE", getLower(getRegistryValue("HL")));
         clockCycles = 4;
     }
 
-    private void op_LD_D_H() {
+    public void op_LD_D_H() {
         setUpper("DE", getUpper(getRegistryValue("HL")));
         clockCycles = 4;
     }
 
-    private void op_LD_D_E() {
+    public void op_LD_D_E() {
         setUpper("DE", getLower(getRegistryValue("DE")));
         clockCycles = 4;
     }
 
-    private void op_LD_D_D() {
+    public void op_LD_D_D() {
         setUpper("DE", getUpper(getRegistryValue("DE")));
         clockCycles = 4;
     }
 
-    private void op_LD_D_C() {
+    public void op_LD_D_C() {
         setUpper("DE", getLower(getRegistryValue("BC")));
         clockCycles = 4;
     }
 
-    private void op_LD_D_B() {
+    public void op_LD_D_B() {
         setUpper("DE", getUpper(getRegistryValue("BC")));
         clockCycles = 4;
     }
 
-    private void op_LD_C_A() {
+    public void op_LD_C_A() {
         setLower("BC", A);
         clockCycles = 4;
     }
 
-    private void op_LD_C_HL_VALUE() {
-        setLower("BC", emulator.getMemory().read(HL));
-        clockCycles = 4;
+    public void op_LD_C_HL_VALUE() {
+        setLower("BC", this.memory.read(HL));
+        clockCycles = 8;
     }
 
-    private void op_LD_C_L() {
+    public void op_LD_C_L() {
         setLower("BC", getLower(getRegistryValue("HL")));
         clockCycles = 4;
     }
 
-    private void op_LD_C_H() {
+    public void op_LD_C_H() {
         setLower("BC", getUpper(getRegistryValue("HL")));
         clockCycles = 4;
     }
 
-    private void op_LD_C_E() {
+    public void op_LD_C_E() {
         setLower("BC", getLower(getRegistryValue("DE")));
         clockCycles = 4;
     }
 
-    private void op_LD_C_D() {
+    public void op_LD_C_D() {
         setLower("BC", getUpper(getRegistryValue("DE")));
         clockCycles = 4;
     }
 
-    private void op_LD_C_C() {
+    public void op_LD_C_C() {
         setLower("BC", getLower(getRegistryValue("BC")));
         clockCycles = 4;
     }
 
-    private void op_LD_C_B() {
+    public void op_LD_C_B() {
         setLower("BC", getUpper(getRegistryValue("BC")));
         clockCycles = 4;
     }
 
-    private void op_LD_B_A() {
+    public void op_LD_B_A() {
         clockCycles = 4;
         setUpper("BC", A);
     }
 
-    private void op_LD_B_HL_VALUE() {
+    public void op_LD_B_HL_VALUE() {
         clockCycles = 8;
-        setUpper("BC", emulator.getMemory().read(HL));
+        setUpper("BC", this.memory.read(HL));
     }
 
-    private void op_LD_B_L() {
+    public void op_LD_B_L() {
         clockCycles = 4;
         setUpper("BC", getLower(getRegistryValue("HL")));
     }
 
-    private void op_LD_B_H() {
+    public void op_LD_B_H() {
         clockCycles = 4;
         setUpper("BC", getUpper(getRegistryValue("HL")));
     }
 
-    private void op_LD_B_E() {
+    public void op_LD_B_E() {
         clockCycles = 4;
         setUpper("BC", getLower(getRegistryValue("DE")));
     }
 
-    private void op_LD_B_D() {
+    public void op_LD_B_D() {
         clockCycles = 4;
         setUpper("BC", getUpper(getRegistryValue("DE")));
     }
 
-    private void op_LD_B_C() {
+    public void op_LD_B_C() {
         clockCycles = 4;
         setUpper("BC", getLower(getRegistryValue("BC")));
     }
 
-    private void op_LD_B_B() {
+    public void op_LD_B_B() {
         clockCycles = 4;
         setUpper("BC", getUpper(getRegistryValue("BC")));
     }
 
-    private void op_CCF() {
+    public void op_CCF() {
         C = !C;
         H = false;
         N = false;
         clockCycles = 4;
     }
 
-    private void op_LD_A() {
+    public void op_LD_A() {
         clockCycles = 8;
         A = nextByte();
     }
 
-    private void op_DEC_A() {
+    public void op_DEC_A() {
         clockCycles = 8;
         A--;
     }
 
-    private void op_INC_A() {
+    public void op_INC_A() {
         clockCycles = 8;
         A++;
     }
 
-    private void op_DEC_SP() {
+    public void op_DEC_SP() {
         clockCycles = 8;
         SP--;
     }
 
-    private void op_LD_A_HL_DEC() {
-        A = emulator.getMemory().read(HL);
+    public void op_LD_A_HL_DEC() {
+        A = this.memory.read(HL);
         HL--;
         clockCycles = 8;
     }
 
-    private void op_ADD_HL_SP() {
+    public void op_ADD_HL_SP() {
         clockCycles = 8;
         addRegs("HL", "SP");
     }
 
-    private void op_JR_C() {
+    public void op_JR_C() {
         clockCycles = 8;
         if (C) {
             clockCycles = 12;
@@ -1754,45 +1774,45 @@ public class CPU {
         }
     }
 
-    private void op_SCF() {
+    public void op_SCF() {
         C = true;
         H = false;
         N = false;
         clockCycles = 4;
     }
 
-    private void op_LD_HL_VALUE() {
-        emulator.getMemory().write(HL, nextByte());
+    public void op_LD_HL_VALUE() {
+        this.memory.write(HL, nextByte());
         clockCycles = 12;
     }
 
-    private void op_DEC_HL_VALUE() {
+    public void op_DEC_HL_VALUE() {
         clockCycles = 12;
-        emulator.getMemory().write(HL, decrement(emulator.getMemory().read(HL)));
+        this.memory.write(HL, decrement(this.memory.read(HL)));
     }
 
-    private void op_INC_HL_VALUE() {
+    public void op_INC_HL_VALUE() {
         clockCycles = 12;
-        emulator.getMemory().write(HL, increment(emulator.getMemory().read(HL)));
+        this.memory.write(HL, increment(this.memory.read(HL)));
     }
 
-    private void op_INC_SP() {
+    public void op_INC_SP() {
         SP++;
         clockCycles = 8;
     }
 
-    private void op_LD_HL_DEC_A() {
+    public void op_LD_HL_DEC_A() {
         clockCycles = 8;
-        emulator.getMemory().write(HL, A);
+        this.memory.write(HL, A);
         HL--;
     }
 
-    private void op_LD_SP16b() {
+    public void op_LD_SP16b() {
         clockCycles = 12;
         SP = nextPart();
     }
 
-    private void op_JR_NC() {
+    public void op_JR_NC() {
         clockCycles = 8;
         if (!C) {
             clockCycles = 12;
@@ -1800,42 +1820,42 @@ public class CPU {
         }
     }
 
-    private void op_CPL() {
+    public void op_CPL() {
         A ^= A;
         clockCycles = 4;
     }
 
-    private void op_LD_L() {
+    public void op_LD_L() {
         setLower("HL", nextByte());
         clockCycles = 8;
     }
 
-    private void op_DEC_L() {
+    public void op_DEC_L() {
         setLower("HL", decrement(getLower(getRegistryValue("HL"))));
         clockCycles = 4;
     }
 
-    private void op_INC_L() {
+    public void op_INC_L() {
         setLower("HL", increment(getLower(getRegistryValue("HL"))));
         clockCycles = 4;
     }
 
-    private void op_DEC_HL() {
+    public void op_DEC_HL() {
         HL--;
         clockCycles = 8;
     }
 
-    private void op_LD_A_HL_INC() {
+    public void op_LD_A_HL_INC() {
         clockCycles = 8;
-        A = emulator.getMemory().read(HL++);
+        A = this.memory.read(HL++);
     }
 
-    private void op_ADD_HL_HL() {
+    public void op_ADD_HL_HL() {
         clockCycles = 8;
         addRegs("HL", "HL");
     }
 
-    private void op_JR_Z() {
+    public void op_JR_Z() {
         clockCycles = 8;
         if (Z) {
             clockCycles = 12;
@@ -1843,7 +1863,7 @@ public class CPU {
         }
     }
 
-    private void op_DAA() {
+    public void op_DAA() {
         C = false;
         if ((A & 0x0F) > 9) {
             A += 0x06;
@@ -1857,38 +1877,38 @@ public class CPU {
         clockCycles = 4;
     }
 
-    private void op_LD_H() {
+    public void op_LD_H() {
         setUpper("HL", nextByte());
         clockCycles = 8;
     }
 
-    private void op_DEC_H() {
+    public void op_DEC_H() {
         clockCycles = 4;
         setUpper("HL", decrement(getUpper(getRegistryValue("HL"))));
     }
 
-    private void op_INC_H() {
+    public void op_INC_H() {
         clockCycles = 4;
         setUpper("HL", increment(getUpper(getRegistryValue("HL"))));
     }
 
-    private void op_INC_HL() {
+    public void op_INC_HL() {
         clockCycles = 8;
         HL++;
     }
 
-    private void op_LD_HL_INC_A() {
+    public void op_LD_HL_INC_A() {
         clockCycles = 8;
-        emulator.getMemory().write(HL, A);
+        this.memory.write(HL, A);
         HL++;
     }
 
-    private void op_LD_HL() {
+    public void op_LD_HL() {
         HL = nextPart();
         clockCycles = 12;
     }
 
-    private void op_JR_NZ() {
+    public void op_JR_NZ() {
         clockCycles = 8;
         if (!Z) {
             relativeJump(nextByte());
@@ -1896,189 +1916,189 @@ public class CPU {
         }
     }
 
-    private void op_RRA() {
+    public void op_RRA() {
         A = rr(A);
         clockCycles = 4;
         Z = false;
     }
 
-    private void op_LD_E() {
+    public void op_LD_E() {
         setLower("DE", nextByte());
         clockCycles = 8;
     }
 
-    private void op_DEC_E() {
+    public void op_DEC_E() {
         setLower("DE", decrement(getLower(getRegistryValue("DE"))));
         clockCycles = 4;
     }
 
-    private void op_INC_E() {
+    public void op_INC_E() {
         setLower("DE", increment(getLower(getRegistryValue("DE"))));
         clockCycles = 4;
     }
 
-    private void op_DEC_DE() {
+    public void op_DEC_DE() {
         DE--;
         clockCycles = 8;
     }
 
-    private void op_LD_A_DE() {
+    public void op_LD_A_DE() {
         clockCycles = 8;
-        A = emulator.getMemory().read(DE);
+        A = this.memory.read(DE);
     }
 
-    private void op_ADD_HL_DE() {
+    public void op_ADD_HL_DE() {
         clockCycles = 8;
         addRegs("HL", "DE");
     }
 
-    private void op_JR() {
+    public void op_JR() {
         clockCycles = 12;
         relativeJump(nextByte());
     }
 
-    private void op_RLA() {
+    public void op_RLA() {
         A = rl(A);
         clockCycles = 4;
         Z = false;
     }
 
-    private void op_LD_D() {
+    public void op_LD_D() {
         setUpper("DE", nextByte());
         clockCycles = 8;
     }
 
-    private void op_DEC_D() {
+    public void op_DEC_D() {
         setUpper("DE", decrement(getUpper(getRegistryValue("DE"))));
         clockCycles = 4;
     }
 
-    private void op_INC_D() {
+    public void op_INC_D() {
         setUpper("DE", increment(getUpper(getRegistryValue("DE"))));
         clockCycles = 4;
     }
 
-    private void op_INC_DE() {
+    public void op_INC_DE() {
         clockCycles = 8;
         DE++;
     }
 
-    private void op_LD_DE_A() {
-        emulator.getMemory().write(DE, A);
+    public void op_LD_DE_A() {
+        this.memory.write(DE, A);
         clockCycles = 8;
     }
 
-    private void op_LD_DE() {
+    public void op_LD_DE() {
         DE = nextPart();
         clockCycles = 12;
     }
 
-    private void op_STOP() {
+    public void op_STOP() {
         stop = true;
         clockCycles = 4;
     }
 
-    private void op_RRCA() {
+    public void op_RRCA() {
         A = rrc(A);
         Z = false;
         clockCycles = 4;
     }
 
-    private void op_LD_C() {
+    public void op_LD_C() {
         setLower("BC", nextByte());
         clockCycles = 8;
     }
 
-    private void op_DEC_C() {
+    public void op_DEC_C() {
         clockCycles = 4;
         setLower("BC", decrement(getLower(getRegistryValue("BC"))));
     }
 
-    private void op_INC_C() {
+    public void op_INC_C() {
         clockCycles = 4;
         setLower("BC", increment(getLower(getRegistryValue("BC"))));
     }
 
-    private void op_DEC_BC() {
+    public void op_DEC_BC() {
         clockCycles = 8;
         BC--;
     }
 
-    private void op_LD_A_BC() {
-        A = emulator.getMemory().read(BC);
+    public void op_LD_A_BC() {
+        A = this.memory.read(BC);
         clockCycles = 8;
     }
 
-    private void op_LD_ADD_HL_BC() {
+    public void op_LD_ADD_HL_BC() {
         clockCycles = 8;
         addRegs("HL", "BC");
     }
 
-    private void op_LD_SP8b() {
+    public void op_LD_SP8b() {
         clockCycles = 20;
         writePart(nextByte(), SP);
     }
 
-    private void op_RLCA() {
+    public void op_RLCA() {
         clockCycles = 4;
         A = rlc(A);
         Z = false;
     }
 
-    private void op_LD_B() {
+    public void op_LD_B() {
         setUpper("BC", nextByte());
-        clockCycles = 4;
+        clockCycles = 8;
     }
 
-    private void op_INC_B() {
+    public void op_INC_B() {
         setUpper("BC", increment(getUpper(getRegistryValue("BC"))));
         clockCycles = 8;
     }
 
-    private void op_DEC_B() {
+    public void op_DEC_B() {
         setUpper("BC", decrement(getUpper(getRegistryValue("BC"))));
         clockCycles = 8;
     }
 
-    private void op_INC_BC() {
+    public void op_INC_BC() {
         BC++;
         clockCycles = 8;
     }
 
-    private void op_LD_BC() {
+    public void op_LD_BC() {
         BC = nextPart();
         clockCycles = 12;
     }
 
-    private void op_LD_BC_A() {
-        emulator.getMemory().write(BC, A);
+    public void op_LD_BC_A() {
+        this.memory.write(BC, A);
         clockCycles = 8;
     }
 
-    private void op_nop() {
+    public void op_nop() {
     }
 
     public void setLower(String registry, int val) {
         int registryValue = getRegistryValue(registry);
-        registryValue = (registryValue & 0xFF00) | (val);
+        registryValue = ((registryValue & 0xFF00) | (val));
         setRegistryValue(registry, registryValue);
     }
 
     public void setUpper(String registry, int val) {
         int registryValue = getRegistryValue(registry);
-        registryValue = (registryValue & 0x00FF) | ((val) << 8);
+        registryValue = ((registryValue & 0x00FF) | ((val) << 8));
         setRegistryValue(registry, registryValue);
     }
 
-    private void setRegistryValue(String registry, int registryValue) {
+    public void setRegistryValue(String registry, int registryValue) {
         if (registry.equals("BC")) {
             BC = registryValue;
         } else if (registry.equals("A")) {
-            A = registryValue;
+            A = (byte) (registryValue & 0xFF);
         } else if (registry.equals("DE")) {
             DE = registryValue;
         } else if (registry.equals("F")) {
-            F = registryValue;
+            F = (byte) (registryValue & 0xFF);
         } else if (registry.equals("HL")) {
             HL = registryValue;
         } else if (registry.equals("SP")) {
@@ -2086,7 +2106,7 @@ public class CPU {
         }
     }
 
-    private int getRegistryValue(String registry) {
+    public int getRegistryValue(String registry) {
         if (registry.equals("BC")) {
             return BC;
         } else if (registry.equals("A")) {
@@ -2103,28 +2123,28 @@ public class CPU {
         return 0;
     }
 
-    public int getLower(int val) {
-        return (val & 0xFF);
+    public byte getLower(int val) {
+        return (byte) (val & 0xFF);
     }
 
-    public int getUpper(int val) {
-        return ((val & 0xFF00) >> 8);
+    public byte getUpper(int val) {
+        return (byte) (val >> 8 & 0xFF);
     }
 
-    public int increment(int val) {
+    public byte increment(int val) {
         H = (val & 0xF) == 0xF;
         val++;
         Z = val == 0;
         N = false;
-        return val;
+        return (byte) val;
     }
 
-    public int decrement(int val) {
+    public byte decrement(int val) {
         val--;
         Z = val == 0;
         N = true;
         H = (val & 0xF) == 0xF;
-        return val;
+        return (byte) val;
     }
 
     public void rst(int addr) {
@@ -2138,7 +2158,7 @@ public class CPU {
         H = (((A & 0x0F) + (b & 0x0F)) & 0x10) == 0x10;
         C = n > 0xFF;
         N = false;
-        A = (n & 0xFF);
+        A = (byte) (n & 0xFF);
     }
 
     public void adc(int b) {
@@ -2150,7 +2170,7 @@ public class CPU {
         H = (((A & 0x0F) + (b & 0x0F)) & 0x10) == 0x10;
         C = n > 0xFF;
         N = false;
-        A = (n & 0xFF);
+        A = (byte) (n & 0xFF);
     }
 
     public void sub(int b) {
@@ -2198,7 +2218,7 @@ public class CPU {
         C = A < b;
     }
 
-    public int rl(int val) {
+    public byte rl(int val) {
         boolean oldcarry = C;
         C = (val & (1 << 7)) == (1 << 7);
         H = false;
@@ -2208,10 +2228,10 @@ public class CPU {
             val |= 0x1;
         }
         Z = val == 0;
-        return val;
+        return (byte) val;
     }
 
-    public int rlc(int val) {
+    public byte rlc(int val) {
         C = (val & (1 << 7)) == (1 << 7);
         H = false;
         N = false;
@@ -2220,10 +2240,10 @@ public class CPU {
             val |= 0x1;
         }
         Z = val == 0;
-        return val;
+        return (byte) val;
     }
 
-    public int rr(int val) {
+    public byte rr(int val) {
         boolean oldcarry = C;
         C = (val & 0x1) == 0x1;
         H = false;
@@ -2233,10 +2253,10 @@ public class CPU {
             val |= (1 << 7);
         }
         Z = val == 0;
-        return val;
+        return (byte) val;
     }
 
-    public int rrc(int val) {
+    public byte rrc(int val) {
         C = (val & 0x1) == 0x1;
         H = false;
         N = false;
@@ -2245,42 +2265,42 @@ public class CPU {
             val |= (1 << 7);
         }
         Z = val == 0;
-        return val;
+        return (byte) val;
     }
 
-    public int sla(int val) {
+    public byte sla(int val) {
         C = (val & (1 << 7)) != 0;
         val <<= 1;
         Z = val == 0;
         H = false;
         N = false;
-        return val;
+        return (byte) val;
     }
 
-    public int sra(int val) {
+    public byte sra(int val) {
         val = ((val & (1 << 7)) | (val >> 1));
         C = false;
         Z = val == 0;
         H = false;
         N = false;
-        return val;
+        return (byte) val;
     }
 
-    public int swap(int val) {
+    public byte swap(int val) {
         Z = val == 0;
         N = false;
         H = false;
         C = false;
-        return (val << 4) | (val >> 4);
+        return (byte) ((val << 4) | (val >> 4));
     }
 
-    public int srl(int val) {
+    public byte srl(int val) {
         C = (val & 0x1) != 0;
         val >>= 1;
         Z = val == 0;
         H = false;
         N = false;
-        return val;
+        return (byte) val;
     }
 
     public void bit(int val, int b) {

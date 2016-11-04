@@ -2,7 +2,7 @@ package org.jglrxavpok.jameboy.memory;
 
 import java.nio.ByteBuffer;
 
-public class MBC1 implements MemoryController {
+public class MBC1 extends BaseMemoryController {
 
     private final int ramBankCount;
     private final int romBankCount;
@@ -111,6 +111,7 @@ public class MBC1 implements MemoryController {
 
     @Override
     public void write(int index, byte value) {
+        super.write(index, value);
         if(index >= 0x0000 && index <= 0x1FFF) {
             enableRAM = (value & 0b00001111) == (byte)0xA;
         }
@@ -166,7 +167,7 @@ public class MBC1 implements MemoryController {
                 effectiveRAMBank = currentRAMBank;
             return rom.get(index & 0x1FFF + effectiveRAMBank * 0x2000);
         }
-        return 0;
+        return super.read(index);
     }
 
 }
