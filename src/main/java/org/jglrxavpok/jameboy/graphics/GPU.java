@@ -1,6 +1,6 @@
 package org.jglrxavpok.jameboy.graphics;
 
-import org.jglrxavpok.jameboy.JameBoy;
+import org.jglrxavpok.jameboy.JameBoyApp;
 
 import java.awt.*;
 
@@ -8,7 +8,7 @@ public class GPU {
 
     public static final double REFRESH_RATE = 59.73;
 
-    public void render(JameBoy emulator, Screen s, Graphics g, float interpolation) {
+    public void render(JameBoyApp emulator, Screen s, Graphics g, float interpolation) {
         s.fillRect(0, 0, s.width, s.height, 0xFF000000);
     }
 }

@@ -10,7 +10,7 @@ public class CPU {
     private int PC = 0x100;
     private int SP = 0;
     private int clockCycles = 0;
-    private JameBoy emulator;
+    private JameBoyApp emulator;
     private int A;
     private int F;
     private boolean Z;
@@ -21,7 +21,7 @@ public class CPU {
     private boolean stop;
     private boolean halted;
 
-    public void setEmulator(JameBoy emu) {
+    public void setEmulator(JameBoyApp emu) {
         this.emulator = emu;
     }
 

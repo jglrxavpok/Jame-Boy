@@ -29,9 +29,11 @@ public class EmulatorThread extends Thread {
     private int frame;
     private int fps;
     private Screen screen;
+    private Font defaultFont;
 
     public EmulatorThread() {
-        screen = JameBoy.screen;
+        screen = JameBoyApp.screen;
+        defaultFont = new Font(null, 1, 64);
     }
 
     public void run() {
@@ -62,9 +64,9 @@ public class EmulatorThread extends Thread {
 
             //Render. To do so, we need to calculate interpolation for a smooth render.
             float interpolation = Math.min(1.0f, (float) ((now - lastUpdateTime) / TIME_BETWEEN_UPDATES));
-            BufferStrategy bs = JameBoy.mainFrame.getBufferStrategy();
+            BufferStrategy bs = JameBoyApp.mainFrame.getBufferStrategy();
             if (bs == null) {
-                JameBoy.mainFrame.createBufferStrategy(2);
+                JameBoyApp.mainFrame.createBufferStrategy(2);
                 return;
             }
             render(bs.getDrawGraphics(), interpolation);
@@ -75,15 +77,15 @@ public class EmulatorThread extends Thread {
             frame++;
             if (thisSecond > lastSecondTime) {
                 fps = frame;
-                if (JameBoy.emulator.getMemory().getROMTitle() != null)
-                    JameBoy.mainFrame.setTitle("JameBoy - " + JameBoy.emulator.getMemory().getROMTitle() + " - " + fps + " fps");
+                if (JameBoyApp.emulator.getMemory().getROMTitle() != null)
+                    JameBoyApp.mainFrame.setTitle("JameBoy - " + JameBoyApp.emulator.getMemory().getROMTitle() + " - " + fps + " fps");
                 else
-                    JameBoy.mainFrame.setTitle("JameBoy - " + fps + " fps");
+                    JameBoyApp.mainFrame.setTitle("JameBoy - " + fps + " fps");
                 frame = 0;
                 lastSecondTime = thisSecond;
             }
 
-            if (!JameBoy.mainFrame.isVisible())
+            if (!JameBoyApp.mainFrame.isVisible())
                 alive = false;
 
             //Yield until it has been at least the target time between renders. This saves the CPU from hogging.
@@ -114,19 +116,19 @@ public class EmulatorThread extends Thread {
                 }
             }
         }
-        if (JameBoy.emulator.hasRomLoaded())
-            JameBoy.emulator.doCycle();
+        if (JameBoyApp.emulator.hasRomLoaded())
+            JameBoyApp.emulator.doCycle();
     }
 
     public void render(Graphics g, float interpolation) {
-        if (JameBoy.emulator.hasRomLoaded()) {
-            JameBoy.emulator.getGPU().render(JameBoy.emulator, screen, g, interpolation);
-            g.drawImage(screen.image, JameBoy.mainFrame.getInsets().left, JameBoy.mainFrame.getInsets().top, JameBoy.mainFrame.getWidth(), JameBoy.mainFrame.getHeight(), null);
+        if (JameBoyApp.emulator.hasRomLoaded()) {
+            JameBoyApp.emulator.getGPU().render(JameBoyApp.emulator, screen, g, interpolation);
+            g.drawImage(screen.image, JameBoyApp.mainFrame.getInsets().left, JameBoyApp.mainFrame.getInsets().top, JameBoyApp.mainFrame.getWidth(), JameBoyApp.mainFrame.getHeight(), null);
         } else {
             g.setColor(Color.BLACK);
-            g.fillRect(0, 0, JameBoy.mainFrame.getWidth(), JameBoy.mainFrame.getHeight());
+            g.fillRect(0, 0, JameBoyApp.mainFrame.getWidth(), JameBoyApp.mainFrame.getHeight());
             g.setColor(Color.RED);
-            g.setFont(new Font(null, 1, 64));
+            g.setFont(defaultFont);
             g.drawString("No ROM loaded!", 10, 100);
         }
     }

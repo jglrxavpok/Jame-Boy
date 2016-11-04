@@ -1,6 +1,6 @@
 package org.jglrxavpok.jameboy.input;
 
-import org.jglrxavpok.jameboy.JameBoy;
+import org.jglrxavpok.jameboy.JameBoyApp;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -21,12 +21,12 @@ public class Mouse implements MouseListener, MouseMotionListener, MouseWheelList
 
     public static int getX() {
         int x1 = x;
-        return Math.round((float) x1 / JameBoy.scale);
+        return Math.round((float) x1 / JameBoyApp.scale);
     }
 
     public static int getY() {
         int y1 = y;
-        return Math.round((float) y1 / JameBoy.scale);
+        return Math.round((float) y1 / JameBoyApp.scale);
     }
 
     private static Mouse getInstance() {
@@ -43,8 +43,8 @@ public class Mouse implements MouseListener, MouseMotionListener, MouseWheelList
 
     private static void addToQueue(int x, int y, int button, int wheelpos, int dwheel, int type) {
         HashMap<String, Integer> map = new HashMap<String, Integer>();
-        map.put("x", x - JameBoy.mainFrame.getInsets().left);
-        map.put("y", y - JameBoy.mainFrame.getInsets().top);
+        map.put("x", x - JameBoyApp.mainFrame.getInsets().left);
+        map.put("y", y - JameBoyApp.mainFrame.getInsets().top);
         map.put("button", button);
         map.put("wheelpos", wheelpos);
         map.put("dwheel", dwheel);
