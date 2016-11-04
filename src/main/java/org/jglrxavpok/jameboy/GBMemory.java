@@ -1,6 +1,6 @@
 package org.jglrxavpok.jameboy;
 
-import org.jglrxavpok.jameboy.memory.MemoryType;
+import org.jglrxavpok.jameboy.memory.MemoryController;
 import org.jglrxavpok.jameboy.memory.ROMOnlyHandler;
 
 public class GBMemory {
@@ -41,7 +41,7 @@ public class GBMemory {
     private boolean japanese;
     private byte romVersion;
     private byte headerChecksum;
-    private MemoryType memoryHandler;
+    private MemoryController memoryHandler;
     private int[] ram;
 
     public GBMemory() {
@@ -89,7 +89,7 @@ public class GBMemory {
             }
             if (memoryHandler != null) {
                 ram = new int[this.ramSize * 1024];
-                memoryHandler.init(rom, ram);
+                // TODO: memoryHandler.init(rom, ram);
             }
         } else {
             System.out.println("Invalid ROM: Invalid Nintendo logo");
@@ -277,12 +277,13 @@ public class GBMemory {
     }
 
     public void write(int index, int value) {
-        memoryHandler.write(index, value);
+        // TODO: memoryHandler.write(index, value);
         System.out.println("[Jame Boy] Write value to RAM: " + Integer.toHexString(value) + " at index " + Integer.toHexString(index));
     }
 
     public int read(int index) {
-        int value = memoryHandler.read(index);
+       //TODO: int value = memoryHandler.read(index);
+        int value = 0;
         System.out.println("[Jame Boy] Read value from RAM: " + Integer.toHexString(value) + " at index " + Integer.toHexString(index));
         return value;
     }

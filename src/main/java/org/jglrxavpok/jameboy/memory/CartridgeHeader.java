@@ -13,15 +13,15 @@ public class CartridgeHeader {
     /**
      * ROM sizes in kilobytes
      */
-    public static final int[] ROM_SIZES = new int[55];
+    public static final int[] ROM_SIZES = new int[0x55];
     static {
         for (int i = 0; i < 8; i++) {
             ROM_SIZES[i] = 32 << i;
         }
 
-        ROM_SIZES[52] = 1100;
-        ROM_SIZES[53] = 1200;
-        ROM_SIZES[54] = 1500;
+        ROM_SIZES[0x52] = 1152;
+        ROM_SIZES[0x53] = 1280;
+        ROM_SIZES[0x54] = 1536;
     }
 
     /**

@@ -1,13 +1,13 @@
 package org.jglrxavpok.jameboy.memory;
 
-
-public class ROMOnlyHandler implements MemoryType {
+@Deprecated
+public class ROMOnlyHandler implements MemoryController {
 
     private byte[] rom;
-    private int[] ram;
+    private byte[] ram;
 
     @Override
-    public void write(int index, int value) {
+    public void write(int index, byte value) {
         if (index >= 0xA000 && index <= 0xBFFF) {
             ram[index - 0xA000] = value;
         } else {
@@ -17,7 +17,7 @@ public class ROMOnlyHandler implements MemoryType {
     }
 
     @Override
-    public int read(int index) {
+    public byte read(int index) {
         if (index < 0x8000 && index >= 0) {
             return rom[index];
         } else if (index >= 0xA000 && index < 0xBFFF) {
@@ -26,12 +26,6 @@ public class ROMOnlyHandler implements MemoryType {
             // Invalid ram place
             return 0;
         }
-    }
-
-    @Override
-    public void init(byte[] rom, int[] ram) {
-        this.rom = rom;
-        this.ram = ram;
     }
 
 }
