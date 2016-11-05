@@ -36,7 +36,7 @@ public class CPU {
         if (stop)
             return -1;
         int opcode = nextByte();
-        clockCycles = 4;
+        clockCycles = 0;
         return executeOP(opcode);
     }
 
@@ -79,6 +79,7 @@ public class CPU {
     }
 
     private int executeOP(int opcode) {
+        opcode = opcode & 0xFF;
         switch (opcode) {
             case 0x00: {
                 op_nop();
@@ -932,12 +933,21 @@ public class CPU {
                 op_CALL_NC();
                 break;
             }
+            case 0xFA: {
+                op_LDH_A();
+                break;
+            }
             default: {
                 System.out.println("[Jame Boy] Unknown opcode: " + Integer.toHexString(opcode));
                 break;
             }
         }
         return clockCycles;
+    }
+
+    private void op_LDH_A() {
+        A = memory.read(nextByte());
+        clockCycles = 16;
     }
 
     public void op_CALL_NC() {
@@ -1575,7 +1585,7 @@ public class CPU {
 
     public void op_LD_E_HL_VALUE() {
         setLower("DE", this.memory.read(HL));
-        clockCycles = 4;
+        clockCycles = 8;
     }
 
     public void op_LD_E_L() {
