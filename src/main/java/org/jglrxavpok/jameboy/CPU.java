@@ -41,16 +41,16 @@ public class CPU {
     }
 
     private int nextPart() {
-        return (short) ((short) (nextByte()) | (nextByte() << 8));
+        return (nextByte() & 0xFF | (nextByte() & 0xFF) << 8) & 0xFFFF;
     }
 
     private byte nextByte() {
         return this.memory.read(PC++);
     }
 
-    public void pushPart(int val) {
+    public void push16Bit(int val) {
+        write16Bits(SP, val);
         SP -= 2;
-        writePart(SP, val);
     }
 
     public int popPart() {
@@ -60,9 +60,9 @@ public class CPU {
         return val;
     }
 
-    public void writePart(int pos, int val) {
-        this.memory.write(pos, (byte) (val & 0xFF));
-        this.memory.write(pos + 1, (byte) ((val >> 8) & 0xFF));
+    public void write16Bits(int pos, int val) {
+        this.memory.write(pos, getLower(val));
+        this.memory.write(pos + 1, getUpper(val));
     }
 
     public void hardGoto(int index) {
@@ -937,6 +937,54 @@ public class CPU {
                 op_LDH_A();
                 break;
             }
+            case 0xEA: {
+                op_LDH_A_TO();
+                break;
+            }
+            case 0xF2: {
+                op_LD_A_C_OFFSET();
+                break;
+            }
+            case 0xE2: {
+                op_LD_C_OFFSET_ADDRESS_A();
+                break;
+            }
+            case 0xE0: {
+                op_LD_OFFSET_ADDRESS_A();
+                break;
+            }
+            case 0xF0: {
+                op_LD_A_OFFSET_ADDRESS();
+                break;
+            }
+            case 0xF9: {
+                op_LD_SP_HL();
+                break;
+            }
+            case 0xF8: {
+                op_LD_HL_SP_OFFSET();
+                break;
+            }
+            case 0xF5: {
+                op_PUSH_AF();
+                break;
+            }
+            case 0xD5: {
+                op_PUSH_DE();
+                break;
+            }
+            case 0xE5: {
+                op_PUSH_HL();
+                break;
+            }
+            case 0xF1: {
+                op_POP_AF();
+                break;
+            }
+            case 0xE1: {
+                op_POP_HL();
+                break;
+            }
             default: {
                 System.out.println("[Jame Boy] Unknown opcode: " + Integer.toHexString(opcode));
                 break;
@@ -945,8 +993,75 @@ public class CPU {
         return clockCycles;
     }
 
+    private void op_POP_HL() {
+        HL = popPart();
+        clockCycles = 12;
+    }
+
+    private void op_POP_AF() {
+        int AF = popPart();
+        A = getUpper(AF);
+        F = getLower(AF);
+        clockCycles = 12;
+    }
+
+    private void op_PUSH_HL() {
+        push16Bit(HL);
+        clockCycles = 16;
+    }
+
+    private void op_PUSH_DE() {
+        push16Bit(DE);
+        clockCycles = 16;
+    }
+
+    private void op_PUSH_AF() {
+        push16Bit(((A & 0xFF) << 8 | (F & 0xFF)) & 0xFFFF);
+        clockCycles = 16;
+    }
+
+    private void op_LD_HL_SP_OFFSET() {
+        Z = false;
+        N = false;
+        byte val = nextByte();
+        H = (PC & 0x0FFF) + (val & 0xFF) > 0x0FFF;
+        C = (val & 0xFF) + PC > 0xFFFF;
+        HL = SP + val; // val is signed here
+        clockCycles = 12;
+    }
+
+    private void op_LD_SP_HL() {
+        SP = HL;
+        clockCycles = 8;
+    }
+
+    private void op_LD_A_OFFSET_ADDRESS() {
+        A = memory.read(0xFF00 + (nextByte() & 0xFF));
+        clockCycles = 12;
+    }
+
+    private void op_LD_OFFSET_ADDRESS_A() {
+        memory.write(0xFF00 + (nextByte() & 0xFF), A);
+        clockCycles = 12;
+    }
+
+    private void op_LD_C_OFFSET_ADDRESS_A() {
+        memory.write(0xFF00 + getLower(BC), A);
+        clockCycles = 8;
+    }
+
+    private void op_LD_A_C_OFFSET() {
+        A = memory.read(0xFF00 + getLower(BC));
+        clockCycles = 8;
+    }
+
+    private void op_LDH_A_TO() {
+        memory.write(nextByte() & 0xFF, A);
+        clockCycles = 16;
+    }
+
     private void op_LDH_A() {
-        A = memory.read(nextByte());
+        A = memory.read(nextByte() & 0xFF);
         clockCycles = 16;
     }
 
@@ -955,7 +1070,7 @@ public class CPU {
         int address = nextPart();
         if (!Z) {
             clockCycles = 24;
-            pushPart(PC);
+            push16Bit(PC);
             PC = address;
         }
     }
@@ -983,7 +1098,7 @@ public class CPU {
         int address = nextPart();
         if (!C) {
             clockCycles = 20;
-            pushPart(PC);
+            push16Bit(PC);
             PC = address;
         }
     }
@@ -1001,7 +1116,7 @@ public class CPU {
     private void op_CALL() {
         clockCycles = 24;
         int address = nextPart();
-        pushPart(PC);
+        push16Bit(PC);
         PC = address;
     }
 
@@ -1010,7 +1125,7 @@ public class CPU {
         int address = nextPart();
         if (Z) {
             clockCycles = 24;
-            pushPart(PC);
+            push16Bit(PC);
             PC = address;
         }
     }
@@ -1058,7 +1173,7 @@ public class CPU {
     }
 
     private void op_PUSH_BC() {
-        pushPart(BC);
+        push16Bit(BC);
         clockCycles = 16;
     }
 
@@ -1067,7 +1182,7 @@ public class CPU {
         int address = nextPart();
         if (!Z) {
             clockCycles = 24;
-            pushPart(PC);
+            push16Bit(PC);
             PC = address;
         }
     }
@@ -2046,7 +2161,7 @@ public class CPU {
 
     private void op_LD_SP8b() {
         clockCycles = 20;
-        writePart(nextByte(), SP);
+        write16Bits(nextPart(), SP);
     }
 
     private void op_RLCA() {
@@ -2138,7 +2253,7 @@ public class CPU {
     }
 
     public byte getUpper(int val) {
-        return (byte) (val >> 8 & 0xFF);
+        return (byte) ((val >> 8) & 0xFF);
     }
 
     public byte increment(int val) {
@@ -2158,7 +2273,7 @@ public class CPU {
     }
 
     public void rst(int addr) {
-        pushPart(PC);
+        push16Bit(PC);
         PC = addr;
     }
 

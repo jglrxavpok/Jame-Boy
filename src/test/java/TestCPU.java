@@ -1,11 +1,15 @@
 import org.jglrxavpok.jameboy.CPU;
 import org.jglrxavpok.jameboy.memory.BaseMemoryController;
-import org.jglrxavpok.jameboy.memory.MemoryController;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
+import java.util.Arrays;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
+// based on http://marc.rawer.de/Gameboy/Docs/GBCPUman.pdf
+// and http://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
 public class TestCPU {
 
     private CPU cpu;
@@ -407,6 +411,253 @@ public class TestCPU {
         assertEquals((byte)0xFF, cpu.A);
     }
 
+    @Test
+    public void ld8bitAInto() {
+        testCyclesWithRandomFillAtStart(new byte[] {
+                (byte) 0x47 // ld B,A
+        }, 4);
+        assertEquals(cpu.A, cpu.getUpper(cpu.BC));
+
+        testCyclesWithRandomFillAtStart(new byte[] {
+                (byte) 0x4F // ld C,A
+        }, 4);
+        assertEquals(cpu.A, cpu.getLower(cpu.BC));
+
+        testCyclesWithRandomFillAtStart(new byte[] {
+                (byte) 0x57 // ld D,A
+        }, 4);
+        assertEquals(cpu.A, cpu.getUpper(cpu.DE));
+
+        testCyclesWithRandomFillAtStart(new byte[] {
+                (byte) 0x5F // ld E,A
+        }, 4);
+        assertEquals(cpu.A, cpu.getLower(cpu.DE));
+
+        testCyclesWithRandomFillAtStart(new byte[] {
+                (byte) 0x67 // ld H,A
+        }, 4);
+        assertEquals(cpu.A, cpu.getUpper(cpu.HL));
+
+        testCyclesWithRandomFillAtStart(new byte[] {
+                (byte) 0x6F // ld L,A
+        }, 4);
+        assertEquals(cpu.A, cpu.getLower(cpu.HL));
+    }
+
+    @Test
+    public void writeAValueToMemoryAtAddress() {
+        byte[] memory = new byte[] {
+                0x02, 0x0/*placeholder for the value to write*/, 0x1 // ld (BC),A
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "BC", 1, 8);
+        assertEquals(cpu.A, memory[1]);
+
+        memory = new byte[] {
+                0x12, 0x0/*placeholder for the value to write*/, 0x1 // ld (DE),A
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "DE", 1, 8);
+        assertEquals(cpu.A, memory[1]);
+
+        memory = new byte[] {
+                0x77, 0x0/*placeholder for the value to write*/, 0x1 // ld (HL),A
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "HL", 1, 8);
+        assertEquals(cpu.A, memory[1]);
+
+        memory = new byte[] {
+                (byte) 0xEA, 0x1 // ld (nn),A
+        };
+        testCyclesWithRandomFillAtStart(memory, 16);
+        assertEquals(cpu.A, memory[1]);
+    }
+
+    @Test
+    public void ld8bitWithOffsetsAndIncrementsAndDecrements() {
+        byte[] memory = new byte[] {
+                (byte) 0xF2, // ld A,($FF00+C)
+                0x0, 0x0, 0x0, 0x0, 0x0, (byte) 0x50/*value to read*/
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "BC", 1, 8);
+        assertEquals(memory[6], cpu.A);
+
+        memory = new byte[] {
+                (byte) 0xE2, // ld ($FF00+C),A
+                0x0, 0x0, 0x0, 0x0, 0x0, 0x0/*value to override*/
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "BC", 1, 8);
+        assertEquals(cpu.A, memory[6]);
+
+        // -----------------
+
+        memory = new byte[] {
+                (byte) 0x3A, 0x1, // ld A,(HLD)
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "HL", 1, 8);
+        assertEquals(0x1, cpu.A);
+        assertEquals(0, cpu.HL); // check decrement
+
+        // -----------------
+        memory = new byte[] {
+                (byte) 0x32, 0x1, // ld (HLD),A
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "HL", 1, 8);
+        assertEquals(cpu.A, memory[1]);
+        assertEquals(0, cpu.HL); // check decrement
+
+        // -----------------
+
+        memory = new byte[] {
+                (byte) 0x2A, 0x1, // ld A,(HLI)
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "HL", 1, 8);
+        assertEquals(0x1, cpu.A);
+        assertEquals(2, cpu.HL); // check decrement
+
+        // -----------------
+        memory = new byte[] {
+                (byte) 0x22, 0x1, // ld (HLI),A
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "HL", 1, 8);
+        assertEquals(cpu.A, memory[1]);
+        assertEquals(2, cpu.HL); // check decrement
+
+        // ---------
+        memory = new byte[] {
+                (byte) 0xE0, // ld ($FF00+n),A
+                0x1, 0x0, 0x0, 0x0, 0x0, 0x0/*value to override*/
+        };
+        System.out.println(Arrays.toString(memory));
+        testCyclesWithRandomFillAtStart(memory, 12);
+        System.out.println(Arrays.toString(memory));
+        System.out.println(cpu.A);
+        assertEquals(cpu.A, memory[6]);
+
+        memory = new byte[] {
+                (byte) 0xF0, // ld A,($FF00+n)
+                0x1, 0x0, 0x0, 0x0, 0x0, (byte) 0xFF/*value to write*/
+        };
+        testCyclesWithRandomFillAtStart(memory, 12);
+        assertEquals(memory[6], cpu.A);
+    }
+
+    @Test
+    public void ld16bit() {
+        testCyclesWithRandomFillAtStart(new byte[] {
+             0x01, (byte) 0xFF, (byte) 0xFF // ld BC,nn
+        }, 12);
+        assertEquals(0xFFFF, cpu.BC & 0xFFFF);
+
+        testCyclesWithRandomFillAtStart(new byte[] {
+                0x11, (byte) 0xFF, (byte) 0xFF // ld DE,nn
+        }, 12);
+        assertEquals(0xFFFF, cpu.DE & 0xFFFF);
+
+        testCyclesWithRandomFillAtStart(new byte[] {
+                0x21, (byte) 0xFF, (byte) 0xFF // ld HL,nn
+        }, 12);
+        assertEquals(0xFFFF, cpu.HL & 0xFFFF);
+
+        testCyclesWithRandomFillAtStart(new byte[] {
+                0x31, (byte) 0xFF, (byte) 0xFF // ld SP,nn
+        }, 12);
+        assertEquals(0xFFFF, cpu.SP & 0xFFFF);
+
+        // ----
+
+        testCyclesWithRandomFillAtStart(new byte[] {
+                (byte) 0xF9, // ld SP,HL
+        }, 8);
+        assertEquals(cpu.HL & 0xFFFF, cpu.SP & 0xFFFF);
+
+        testCyclesWithRandomFillAtStartAndSetRegister(new byte[] {
+                (byte) 0xF8, 0x1,// ldhl SP,n
+        }, "SP", 1, 12);
+        assertEquals(cpu.SP +1, cpu.HL);
+        assertFalse(cpu.Z);
+        assertFalse(cpu.N);
+
+        testCyclesWithRandomFillAtStartAndSetRegister(new byte[] {
+                (byte) 0xF8, (byte) 0xFF,// ldhl SP,n
+        }, "SP", 1, 12);
+        assertEquals(cpu.SP -1, cpu.HL);
+        assertFalse(cpu.Z);
+        assertFalse(cpu.N);
+
+        // --------------
+        byte[] memory = new byte[] {
+                (byte) 0x08, 0x03, 0x0, (byte) 0xF0, (byte) 0xFF // ld (nn)S,SP
+        };
+        testCyclesWithRandomFillAtStart(memory, 20);
+        assertEquals(cpu.getLower(cpu.SP), memory[3]);
+        assertEquals(cpu.getUpper(cpu.SP), memory[4]);
+
+        // ------------
+        memory = new byte[] {
+                (byte) 0xF5, (byte) 0xF4 /*garbage*/, 0x0, 0x0// push AF
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "SP", 2, 16);
+        assertEquals(cpu.SP, 0);
+        assertEquals(cpu.A & 0xFF, memory[3] & 0xFF);
+        assertEquals(cpu.F & 0xFF, memory[2] & 0xFF);
+
+        memory = new byte[] {
+                (byte) 0xC5, (byte) 0xF4 /*garbage*/, 0x0, 0x0// push BC
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "SP", 2, 16);
+        assertEquals(cpu.SP, 0);
+        assertEquals(cpu.getLower(cpu.BC) & 0xFF, memory[2] & 0xFF);
+        assertEquals(cpu.getUpper(cpu.BC) & 0xFF, memory[3] & 0xFF);
+
+        memory = new byte[] {
+                (byte) 0xD5, (byte) 0xF4 /*garbage*/, 0x0, 0x0// push DE
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "SP", 2, 16);
+        assertEquals(cpu.SP, 0);
+        assertEquals(cpu.getLower(cpu.DE) & 0xFF, memory[2] & 0xFF);
+        assertEquals(cpu.getUpper(cpu.DE) & 0xFF, memory[3] & 0xFF);
+
+        memory = new byte[] {
+                (byte) 0xE5, (byte) 0xF4 /*garbage*/, 0x0, 0x0// push HL
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "SP", 2, 16);
+        assertEquals(cpu.SP, 0);
+        assertEquals(cpu.getLower(cpu.HL) & 0xFF, memory[2] & 0xFF);
+        assertEquals(cpu.getUpper(cpu.HL) & 0xFF, memory[3] & 0xFF);
+
+        // ---------
+        memory = new byte[] {
+                (byte) 0xF1, (byte) 0xF4 /*garbage*/, 0x0, 0x0// pop AF
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "SP", 2, 12);
+        assertEquals(cpu.SP, 4);
+        assertEquals(memory[2] & 0xFF, cpu.F & 0xFF);
+        assertEquals(memory[3] & 0xFF, cpu.A & 0xFF);
+
+        memory = new byte[] {
+                (byte) 0xC1, (byte) 0xF4 /*garbage*/, 0x0, 0x0// pop BC
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "SP", 2, 12);
+        assertEquals(cpu.SP, 4);
+        assertEquals(memory[2] & 0xFF, cpu.getLower(cpu.BC) & 0xFF);
+        assertEquals(memory[3] & 0xFF, cpu.getUpper(cpu.BC) & 0xFF);
+
+        memory = new byte[] {
+                (byte) 0xD1, (byte) 0xF4 /*garbage*/, 0x0, 0x0// pop DE
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "SP", 2, 12);
+        assertEquals(cpu.SP, 4);
+        assertEquals(memory[2] & 0xFF, cpu.getLower(cpu.DE) & 0xFF);
+        assertEquals(memory[3] & 0xFF, cpu.getUpper(cpu.DE) & 0xFF);
+
+        memory = new byte[] {
+                (byte) 0xE1, (byte) 0xF4 /*garbage*/, 0x0, 0x0// pop HL
+        };
+        testCyclesWithRandomFillAtStartAndSetRegister(memory, "SP", 2, 12);
+        assertEquals(cpu.SP, 4);
+        assertEquals(memory[2] & 0xFF, cpu.getLower(cpu.HL) & 0xFF);
+        assertEquals(memory[3] & 0xFF, cpu.getUpper(cpu.HL) & 0xFF);
+    }
+
     private void testCycles(byte[] instruction, int expected) {
         cpu.hardReset();
         cpu.hardGoto(0);
@@ -420,9 +671,11 @@ public class TestCPU {
         cpu.hardGoto(0);
         controller.setRaw(instruction);
         cpu.A = randByte();
+        cpu.F = randByte();
         cpu.BC = randByte() << 8 | randByte();
         cpu.HL = randByte() << 8 | randByte();
         cpu.DE = randByte() << 8 | randByte();
+        cpu.SP = randByte() << 8 | randByte();
         cpu.setRegistryValue(registerName, value);
         int cycles = cpu.doCycle();
         assertEquals("invalid clock cycle count", expected, cycles);
@@ -436,12 +689,13 @@ public class TestCPU {
         cpu.BC = randByte() << 8 | randByte();
         cpu.HL = randByte() << 8 | randByte();
         cpu.DE = randByte() << 8 | randByte();
+        cpu.SP = randByte() << 8 | randByte();
         int cycles = cpu.doCycle();
         assertEquals("invalid clock cycle count", expected, cycles);
     }
 
     private byte randByte() {
-        int value = (int)(Math.random() * 0xF) << 8 | (int)(Math.random() * 0xF);
+        int value = ((((int)(Math.random() * 0xF)) << 8) &0xFF) | (int)(Math.random() * 0xF);
         if(value == 0 || value == 0xFF)
             return randByte();
         return (byte) value;
@@ -464,6 +718,10 @@ public class TestCPU {
             if(index <= 0x3FFF) {
                 raw[index] = value;
             }
+
+            if(index >= 0xFF00 && index <= 0xFFFF) {
+                raw[index - 0xFF00 + 5] = value;
+            }
             super.write(index, value);
         }
 
@@ -471,6 +729,10 @@ public class TestCPU {
         public byte read(int index) {
             if(index <= 0x3FFF) {
                 return raw[index];
+            }
+
+            if(index >= 0xFF00 && index <= 0xFFFF) {
+                return raw[index - 0xFF00 + 5];
             }
             return super.read(index);
         }
