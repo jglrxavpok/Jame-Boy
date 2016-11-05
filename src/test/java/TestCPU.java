@@ -2,6 +2,7 @@ import org.jglrxavpok.jameboy.CPU;
 import org.jglrxavpok.jameboy.memory.BaseMemoryController;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.theories.Theory;
 
 import java.util.Arrays;
 import java.util.function.BiFunction;
@@ -22,6 +23,253 @@ public class TestCPU {
         cpu = new CPU();
         controller = new TestController(new byte[0]);
         cpu.setMemory(controller);
+    }
+
+    @Test
+    public void misc() {
+        swap((byte) 0x37, "A", 8, -1);
+        swap((byte) 0x30, "B", 8, -1);
+        swap((byte) 0x31, "C", 8, -1);
+        swap((byte) 0x32, "D", 8, -1);
+        swap((byte) 0x33, "E", 8, -1);
+        swap((byte) 0x34, "H", 8, -1);
+        swap((byte) 0x35, "L", 8, -1);
+        swap((byte) 0x36, "(HL)", 16, 2);
+
+        // TODO: More tests on DAA
+        controller.setRaw(new byte[] { 0x27 });
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        int cycles = cpu.doCycle();
+        assertEquals(4, cycles);
+
+        // CPL
+        controller.setRaw(new byte[] { 0x2F });
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        cpu.A = randByte();
+        byte prevA = cpu.A;
+        cycles = cpu.doCycle();
+        assertEquals(4, cycles);
+        assertEquals(~prevA & 0xFF, cpu.A & 0xFF);
+        assertTrue(cpu.N);
+        assertTrue(cpu.H);
+
+        // CCF
+        controller.setRaw(new byte[] { 0x3F });
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        boolean carryFlag = randByte() % 2 == 0;
+        cpu.C = carryFlag;
+        cycles = cpu.doCycle();
+        assertEquals(4, cycles);
+        assertEquals(!carryFlag, cpu.C);
+        assertFalse(cpu.H);
+        assertFalse(cpu.N);
+
+        // SCF
+        controller.setRaw(new byte[] { 0x37 });
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        cycles = cpu.doCycle();
+        assertEquals(4, cycles);
+        assertTrue(cpu.C);
+        assertFalse(cpu.H);
+        assertFalse(cpu.N);
+
+        // NOP
+        controller.setRaw(new byte[] { 0x00 });
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        cycles = cpu.doCycle();
+        assertEquals(4, cycles);
+    }
+
+    private void swap(byte cbCode, String valueName, int clockCycles, int valueHL) {
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        byte[] memory = new byte[] {(byte) 0xCB, cbCode, randByte() };
+        controller.setRaw(memory);
+        cpu.A = randByte();
+        cpu.F = randByte();
+        cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        if(valueHL == -1) {
+            cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
+        } else {
+            cpu.HL = valueHL;
+        }
+        cpu.DE = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.SP = (randByte()&0xFF) << 8 | randByte()&0xFF;
+
+        byte prev = (byte) cpu.getRegistryValue(valueName);
+        int cycles = cpu.doCycle();
+        byte current = (byte) cpu.getRegistryValue(valueName);
+        assertEquals(clockCycles, cycles);
+        assertEquals((byte) (((prev >> 4) | ((prev << 4) & 0xFF)) & 0xFF), current);
+    }
+
+    @Test
+    public void arithmetic16bit() {
+        addHL16bit((byte)0x09, "BC", 8);
+        addHL16bit((byte)0x19, "DE", 8);
+        addHL16bit((byte)0x29, "HL", 8);
+        addHL16bit((byte)0x39, "SP", 8);
+
+        addSP(randByte());
+
+        inc16Bit((byte)0x03, "BC", 8);
+        inc16Bit((byte)0x13, "DE", 8);
+        inc16Bit((byte)0x23, "HL", 8);
+        inc16Bit((byte)0x33, "SP", 8);
+
+        dec16Bit((byte)0x0B, "BC", 8);
+        dec16Bit((byte)0x1B, "DE", 8);
+        dec16Bit((byte)0x2B, "HL", 8);
+        dec16Bit((byte)0x3B, "SP", 8);
+    }
+
+    private void inc16Bit(byte opcode, String register, int clockCycles) {
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        byte[] memory = new byte[] {opcode};
+        controller.setRaw(memory);
+        cpu.A = randByte();
+        cpu.F = randByte();
+        cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.HL = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.DE = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.SP = (randByte()&0xFF) << 8 | randByte()&0xFF;
+
+        int prev = cpu.getRegistryValue(register);
+        int cycles = cpu.doCycle();
+        assertEquals(clockCycles, cycles);
+        assertEquals((prev+1) & 0xFFFF, cpu.getRegistryValue(register) & 0xFFFF);
+    }
+
+    private void dec16Bit(byte opcode, String register, int clockCycles) {
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        byte[] memory = new byte[] {opcode};
+        controller.setRaw(memory);
+        cpu.A = randByte();
+        cpu.F = randByte();
+        cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.HL = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.DE = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.SP = (randByte()&0xFF) << 8 | randByte()&0xFF;
+
+        int prev = cpu.getRegistryValue(register);
+        int cycles = cpu.doCycle();
+        assertEquals(clockCycles, cycles);
+        assertEquals((prev-1) & 0xFFFF, cpu.getRegistryValue(register) & 0xFFFF);
+    }
+
+
+    private void addSP(byte value) {
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        byte[] memory = new byte[] {(byte) 0xE8, value };
+        controller.setRaw(memory);
+        cpu.A = randByte();
+        cpu.F = randByte();
+        cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.HL = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.DE = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.SP = (randByte()&0xFF) << 8 | randByte()&0xFF;
+
+        int prev = cpu.SP;
+        int cycles = cpu.doCycle();
+        assertEquals(16, cycles);
+        assertEquals((prev+value) & 0xFFFF, cpu.SP & 0xFFFF);
+    }
+
+    private void addHL16bit(byte opcode, String toAdd, int clockCycles) {
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        byte[] memory = new byte[] { opcode };
+        controller.setRaw(memory);
+        cpu.A = randByte();
+        cpu.F = randByte();
+        cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.HL = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.DE = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.SP = (randByte()&0xFF) << 8 | randByte()&0xFF;
+
+        int prev = cpu.HL;
+        int valueToAdd = cpu.getRegistryValue(toAdd);
+        int cycles = cpu.doCycle();
+        assertEquals(clockCycles, cycles);
+        assertEquals((prev+valueToAdd) & 0xFFFF, cpu.HL & 0xFFFF);
+    }
+
+    @Test
+    public void decOpcodes() {
+        testDec((byte) 0x3D, "A", 4);
+        testDec((byte) 0x05, "B", 4);
+        testDec((byte) 0x0D, "C", 4);
+        testDec((byte) 0x15, "D", 4);
+        testDec((byte) 0x1D, "E", 4);
+        testDec((byte) 0x25, "H", 4);
+        testDec((byte) 0x2D, "L", 4);
+        testDecWithSetRegister((byte) 0x35, "(HL)", 12, "HL", 1);
+    }
+
+    private void testDec(byte opcode, String parameter, int clockCycles) {
+        testDecWithSetRegister(opcode, parameter, clockCycles, "", 0);
+    }
+
+    private void testDecWithSetRegister(byte opcode, String parameter, int clockCycles, String register, int value) {
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        byte[] memory = new byte[] { opcode, randByte() };
+        controller.setRaw(memory);
+        cpu.A = randByte();
+        cpu.F = randByte();
+        cpu.BC = randByte() << 8 | randByte();
+        cpu.HL = randByte() << 8 | randByte();
+        cpu.DE = randByte() << 8 | randByte();
+        cpu.SP = randByte() << 8 | randByte();
+
+        cpu.setRegistryValue(register, value);
+        int previousValue = cpu.getRegistryValue(parameter);
+        int cycles = cpu.doCycle();
+        assertEquals(clockCycles, cycles);
+        assertEquals((previousValue-1 & 0xFFFF), cpu.getRegistryValue(parameter));
+    }
+
+    @Test
+    public void incOpcodes() {
+        testInc((byte) 0x3C, "A", 4);
+        testInc((byte) 0x04, "B", 4);
+        testInc((byte) 0x0C, "C", 4);
+        testInc((byte) 0x14, "D", 4);
+        testInc((byte) 0x1C, "E", 4);
+        testInc((byte) 0x24, "H", 4);
+        testInc((byte) 0x2C, "L", 4);
+        testIncWithSetRegister((byte) 0x34, "(HL)", 12, "HL", 1);
+    }
+
+    private void testInc(byte opcode, String parameter, int clockCycles) {
+        testIncWithSetRegister(opcode, parameter, clockCycles, "", 0);
+    }
+
+    private void testIncWithSetRegister(byte opcode, String parameter, int clockCycles, String register, int value) {
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        byte[] memory = new byte[] { opcode, randByte() };
+        controller.setRaw(memory);
+        cpu.A = randByte();
+        cpu.F = randByte();
+        cpu.BC = randByte() << 8 | randByte();
+        cpu.HL = randByte() << 8 | randByte();
+        cpu.DE = randByte() << 8 | randByte();
+        cpu.SP = randByte() << 8 | randByte();
+
+        cpu.setRegistryValue(register, value);
+        int previousValue = cpu.getRegistryValue(parameter);
+        int cycles = cpu.doCycle();
+        assertEquals(clockCycles, cycles);
+        assertEquals((previousValue+1 & 0xFFFF), cpu.getRegistryValue(parameter));
     }
 
     @Test

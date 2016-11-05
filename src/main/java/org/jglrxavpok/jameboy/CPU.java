@@ -118,7 +118,7 @@ public class CPU {
                 break;
             }
             case 0x09: {
-                op_LD_ADD_HL_BC();
+                op_ADD_HL_BC();
                 break;
             }
             case 0x0A: {
@@ -1005,12 +1005,27 @@ public class CPU {
                 op_CP_A();
                 break;
             }
+            case 0xE8: {
+                op_ADD_SP();
+                break;
+            }
             default: {
                 System.out.println("[Jame Boy] Unknown opcode: " + Integer.toHexString(opcode));
                 break;
             }
         }
         return clockCycles;
+    }
+
+    private void op_ADD_SP() {
+        int a = SP;
+        int b = nextByte();
+        int temp = a + b;
+        N = false;
+        C = temp > 0xFFFF;
+        H = ((a & 0x0FFF) + (b & 0x0FFF)) > 0x0FFF;
+        SP = (temp & 0xFFFF);
+        clockCycles = 16;
     }
 
     private void op_CP_A() {
@@ -1991,7 +2006,9 @@ public class CPU {
     }
 
     private void op_CPL() {
-        A ^= A;
+        A = (byte) (~A & 0xFF);
+        N = true;
+        H = true;
         clockCycles = 4;
     }
 
@@ -2199,7 +2216,7 @@ public class CPU {
         clockCycles = 8;
     }
 
-    private void op_LD_ADD_HL_BC() {
+    private void op_ADD_HL_BC() {
         clockCycles = 8;
         addRegs("HL", "BC");
     }
@@ -2246,6 +2263,8 @@ public class CPU {
     }
 
     private void op_nop() {
+        // no operation
+        clockCycles = 4;
     }
 
     public void setLower(String registry, int val) {
@@ -2484,7 +2503,7 @@ public class CPU {
         return (byte) val;
     }
 
-    public byte swap(int val) {
+    public byte swap(byte val) {
         Z = val == 0;
         N = false;
         H = false;
@@ -2492,13 +2511,13 @@ public class CPU {
         return (byte) ((val << 4) | (val >> 4));
     }
 
-    public byte srl(int val) {
+    public byte srl(byte val) {
         C = (val & 0x1) != 0;
         val >>= 1;
         Z = val == 0;
         H = false;
         N = false;
-        return (byte) val;
+        return val;
     }
 
     public void bit(int val, int b) {
@@ -2510,7 +2529,7 @@ public class CPU {
     public void addRegs(String registryA, String registryB) {
         int a = getRegistryValue(registryA);
         int b = getRegistryValue(registryB);
-        int temp = (a) + (b);
+        int temp = a + b;
         N = false;
         C = temp > 0xFFFF;
         H = ((a & 0x0FFF) + (b & 0x0FFF)) > 0x0FFF;
@@ -2532,5 +2551,54 @@ public class CPU {
 
     private void executeCBCode(int b) {
         // TODO: Prefix CB implementation
+        switch (b) {
+            case 0x37: {
+                clockCycles = 8;
+                A = swap(A);
+                break;
+            }
+
+            case 0x30: {
+                clockCycles = 8;
+                setUpper("BC", swap(getUpper(BC)));
+                break;
+            }
+
+            case 0x31: {
+                clockCycles = 8;
+                setLower("BC", swap(getLower(BC)));
+                break;
+            }
+
+            case 0x32: {
+                clockCycles = 8;
+                setUpper("DE", swap(getUpper(DE)));
+                break;
+            }
+
+            case 0x33: {
+                clockCycles = 8;
+                setLower("DE", swap(getLower(DE)));
+                break;
+            }
+
+            case 0x34: {
+                clockCycles = 8;
+                setUpper("HL", swap(getUpper(HL)));
+                break;
+            }
+
+            case 0x35: {
+                setLower("HL", swap(getLower(HL)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x36: {
+                memory.write(HL, swap(memory.read(HL)));
+                clockCycles = 16;
+                break;
+            }
+        }
     }
 }
