@@ -686,7 +686,7 @@ public class CPU {
                 break;
             }
             case 0x97: {
-                op_SUB_A();
+                op_SUB_A_A();
                 break;
             }
             case 0x98: {
@@ -750,7 +750,7 @@ public class CPU {
                 break;
             }
             case 0xA7: {
-                op_AND_A();
+                op_AND_A_A();
                 break;
             }
             case 0xA8: {
@@ -782,7 +782,7 @@ public class CPU {
                 break;
             }
             case 0xAF: {
-                op_XOR_A();
+                op_XOR_A_A();
                 break;
             }
             case 0xB0: {
@@ -814,7 +814,7 @@ public class CPU {
                 break;
             }
             case 0xB7: {
-                op_OR_A();
+                op_OR_A_A();
                 break;
             }
             case 0xB8: {
@@ -846,7 +846,7 @@ public class CPU {
                 break;
             }
             case 0xBF: {
-                op_CP_A();
+                op_CP_A_A();
                 break;
             }
             case 0xC0: {
@@ -985,12 +985,57 @@ public class CPU {
                 op_POP_HL();
                 break;
             }
+            case 0xD6: {
+                op_SUB_A();
+                break;
+            }
+            case 0xE6: {
+                op_AND_A();
+                break;
+            }
+            case 0xF6: {
+                op_OR_A();
+                break;
+            }
+            case 0xEE: {
+                op_XOR_A();
+                break;
+            }
+            case 0xFE: {
+                op_CP_A();
+                break;
+            }
             default: {
                 System.out.println("[Jame Boy] Unknown opcode: " + Integer.toHexString(opcode));
                 break;
             }
         }
         return clockCycles;
+    }
+
+    private void op_CP_A() {
+        cp(nextByte() & 0xFF);
+        clockCycles = 8;
+    }
+
+    private void op_XOR_A() {
+        xor(nextByte());
+        clockCycles = 8;
+    }
+
+    private void op_OR_A() {
+        or(nextByte());
+        clockCycles = 8;
+    }
+
+    private void op_AND_A() {
+        and(nextByte());
+        clockCycles = 8;
+    }
+
+    private void op_SUB_A() {
+        sub(nextByte());
+        clockCycles = 8;
     }
 
     private void op_POP_HL() {
@@ -1214,7 +1259,7 @@ public class CPU {
         }
     }
 
-    private void op_CP_A() {
+    private void op_CP_A_A() {
         cp(A);
         clockCycles = 4;
     }
@@ -1235,12 +1280,12 @@ public class CPU {
     }
 
     private void op_CP_E() {
-        cp(getUpper(DE));
+        cp(getLower(DE));
         clockCycles = 4;
     }
 
     private void op_CP_D() {
-        cp(getLower(DE));
+        cp(getUpper(DE));
         clockCycles = 4;
     }
 
@@ -1254,14 +1299,14 @@ public class CPU {
         clockCycles = 4;
     }
 
-    private void op_OR_A() {
+    private void op_OR_A_A() {
         or(A);
         clockCycles = 4;
     }
 
     private void op_OR_HL_VALUE() {
         or(this.memory.read(HL));
-        clockCycles = 4;
+        clockCycles = 8;
     }
 
     private void op_OR_L() {
@@ -1294,7 +1339,7 @@ public class CPU {
         clockCycles = 4;
     }
 
-    private void op_XOR_A() {
+    private void op_XOR_A_A() {
         xor(A);
         clockCycles = 4;
     }
@@ -1305,7 +1350,7 @@ public class CPU {
     }
 
     private void op_XOR_L() {
-        xor(getLower(BC));
+        xor(getLower(HL));
         clockCycles = 4;
     }
 
@@ -1334,7 +1379,7 @@ public class CPU {
         clockCycles = 4;
     }
 
-    private void op_AND_A() {
+    private void op_AND_A_A() {
         and(A);
         clockCycles = 4;
     }
@@ -1414,7 +1459,7 @@ public class CPU {
         clockCycles = 4;
     }
 
-    private void op_SUB_A() {
+    private void op_SUB_A_A() {
         clockCycles = 4;
         sub(A);
     }
@@ -2205,7 +2250,7 @@ public class CPU {
 
     public void setLower(String registry, int val) {
         int registryValue = getRegistryValue(registry);
-        registryValue = ((registryValue & 0xFF00) | (val));
+        registryValue = ((registryValue & 0xFF00) | (val & 0xFF));
         setRegistryValue(registry, registryValue);
     }
 
@@ -2228,6 +2273,18 @@ public class CPU {
             HL = registryValue;
         } else if (registry.equals("SP")) {
             SP = registryValue;
+        } else if (registry.equals("B")) {
+            setUpper("BC", registryValue & 0xFF);
+        } else if (registry.equals("C")) {
+            setLower("BC", registryValue & 0xFF);
+        } else if (registry.equals("D")) {
+            setUpper("DE", registryValue & 0xFF);
+        } else if (registry.equals("E")) {
+            setLower("DE", registryValue & 0xFF);
+        } else if (registry.equals("H")) {
+            setUpper("HL", registryValue & 0xFF);
+        } else if (registry.equals("L")) {
+            setLower("HL", registryValue & 0xFF);
         }
     }
 
@@ -2244,6 +2301,20 @@ public class CPU {
             return HL;
         } else if (registry.equals("SP")) {
             return SP;
+        } else if(registry.equals("B")) {
+            return getUpper(BC) & 0xFF;
+        } else if(registry.equals("C")) {
+            return getLower(BC) & 0xFF;
+        } else if(registry.equals("D")) {
+            return getUpper(DE) & 0xFF;
+        } else if(registry.equals("E")) {
+            return getLower(DE) & 0xFF;
+        } else if(registry.equals("H")) {
+            return getUpper(HL) & 0xFF;
+        } else if(registry.equals("L")) {
+            return getLower(HL) & 0xFF;
+        } else if(registry.equals("(HL)")) {
+            return memory.read(HL & 0xFFFF) & 0xFF;
         }
         return 0;
     }
@@ -2304,11 +2375,12 @@ public class CPU {
     }
 
     public void sbc(int b) {
+        if(C)
+            b++;
         H = ((A & 0xF) - (b & 0xF)) < 0;
         C = ((A) - (b) - 1) < 0;
         N = true;
         A -= b;
-        A--;
         Z = A == 0;
     }
 
@@ -2337,10 +2409,11 @@ public class CPU {
     }
 
     public void cp(int b) {
-        Z = A == b;
-        H = (A & 0xF) < (b & 0xF);
+        byte byteValue = (byte)(b & 0xFF);
+        Z = A == byteValue;
+        H = (A & 0xF) < (byteValue & 0xF);
         N = true;
-        C = A < b;
+        C = A < byteValue;
     }
 
     public byte rl(int val) {

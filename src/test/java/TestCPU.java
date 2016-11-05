@@ -4,9 +4,11 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.function.BiFunction;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 // based on http://marc.rawer.de/Gameboy/Docs/GBCPUman.pdf
 // and http://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
@@ -20,6 +22,346 @@ public class TestCPU {
         cpu = new CPU();
         controller = new TestController(new byte[0]);
         cpu.setMemory(controller);
+    }
+
+    @Test
+    public void addOpcodes() {
+        BiFunction<Byte, Byte, Byte> add = (a, b) -> (byte) ((a + b) & 0xFF);
+        testOperation(new byte[] {
+                (byte) 0x87
+        }, "A", "A", 4, add);
+
+        testOperation(new byte[] {
+                (byte) 0x80
+        }, "B", "A", 4, add);
+
+        testOperation(new byte[] {
+                (byte) 0x81
+        }, "C", "A", 4, add);
+
+        testOperation(new byte[] {
+                (byte) 0x82
+        }, "D", "A", 4, add);
+
+        testOperation(new byte[] {
+                (byte) 0x83
+        }, "E", "A", 4, add);
+
+        testOperation(new byte[] {
+                (byte) 0x84
+        }, "H", "A", 4, add);
+
+        testOperation(new byte[] {
+                (byte) 0x85
+        }, "L", "A", 4, add);
+
+        testOperationWithSetRegister(new byte[] {
+                (byte) 0x86, randByte()
+        }, "(HL)", "A", 8, add, "HL", 1);
+
+        testOperation(new byte[] {
+                (byte) 0xC6, randByte()
+        }, "#", "A", 8, add);
+
+        // ------------ ADC
+        testOperation(new byte[] {
+                (byte) 0x8F, randByte()
+        }, "A", "A", 4, add);
+
+        testOperation(new byte[] {
+                (byte) 0x88, randByte()
+        }, "B", "A", 4, add);
+
+        testOperation(new byte[] {
+                (byte) 0x89, randByte()
+        }, "C", "A", 4, add);
+
+        testOperation(new byte[] {
+                (byte) 0x8A, randByte()
+        }, "D", "A", 4, add);
+
+        testOperation(new byte[] {
+                (byte) 0x8B, randByte()
+        }, "E", "A", 4, add);
+
+        testOperation(new byte[] {
+                (byte) 0x8C, randByte()
+        }, "H", "A", 4, add);
+
+        testOperation(new byte[] {
+                (byte) 0x8D, randByte()
+        }, "L", "A", 4, add);
+
+        testOperationWithSetRegister(new byte[] {
+                (byte) 0x8E, randByte()
+        }, "(HL)", "A", 8, add, "HL", 1);
+
+        testOperation(new byte[] {
+                (byte) 0xCE, randByte()
+        }, "#", "A", 8, add);
+    }
+
+    @Test
+    public void subOpcodes() {
+        // ---------- SUB
+        BiFunction<Byte, Byte, Byte> sub = (a, b) -> (byte)((a - b) & 0xFF);
+        testOperation(new byte[] {
+                (byte) 0x97,
+        }, "A", "A", 4, sub);
+
+        testOperation(new byte[] {
+                (byte) 0x90,
+        }, "B", "A", 4, sub);
+
+        testOperation(new byte[] {
+                (byte) 0x91,
+        }, "C", "A", 4, sub);
+
+        testOperation(new byte[] {
+                (byte) 0x92,
+        }, "D", "A", 4, sub);
+
+        testOperation(new byte[] {
+                (byte) 0x93,
+        }, "E", "A", 4, sub);
+
+        testOperation(new byte[] {
+                (byte) 0x94,
+        }, "H", "A", 4, sub);
+
+        testOperation(new byte[] {
+                (byte) 0x95,
+        }, "L", "A", 4, sub);
+
+        testOperationWithSetRegister(new byte[] {
+                (byte) 0x96, randByte()
+        }, "(HL)", "A", 8, sub, "HL", 1);
+
+        testOperation(new byte[] {
+                (byte) 0xD6, randByte()
+        }, "#", "A", 8, sub);
+
+        // ----------------- SBC
+        testOperation(new byte[] {
+                (byte) 0x9F,
+        }, "A", "A", 4, sub);
+
+        testOperation(new byte[] {
+                (byte) 0x98,
+        }, "B", "A", 4, sub);
+
+        testOperation(new byte[] {
+                (byte) 0x99,
+        }, "C", "A", 4, sub);
+
+        testOperation(new byte[] {
+                (byte) 0x9A,
+        }, "D", "A", 4, sub);
+
+        testOperation(new byte[] {
+                (byte) 0x9B,
+        }, "E", "A", 4, sub);
+
+        testOperation(new byte[] {
+                (byte) 0x9C,
+        }, "H", "A", 4, sub);
+
+        testOperation(new byte[] {
+                (byte) 0x9D,
+        }, "L", "A", 4, sub);
+
+        testOperationWithSetRegister(new byte[] {
+                (byte) 0x9E, randByte()
+        }, "(HL)", "A", 8, sub, "HL", 1);
+
+        /* Does not exist apparently
+        testOperation(new byte[] {
+                (byte) 0xD6, randByte()
+        }, "#", "A", 8, sub);*/
+    }
+
+    @Test
+    public void xorOpcodes() {
+        BiFunction<Byte, Byte, Byte> xor = (a, b) -> (byte) (a ^ b);
+        testOperation(new byte[] {
+                (byte) 0xAF
+        }, "A", "A", 4, xor);
+
+        testOperation(new byte[] {
+                (byte) 0xA8
+        }, "B", "A", 4, xor);
+
+        testOperation(new byte[] {
+                (byte) 0xA9
+        }, "C", "A", 4, xor);
+
+        testOperation(new byte[] {
+                (byte) 0xAA
+        }, "D", "A", 4, xor);
+
+        testOperation(new byte[] {
+                (byte) 0xAB
+        }, "E", "A", 4, xor);
+
+        testOperation(new byte[] {
+                (byte) 0xAC
+        }, "H", "A", 4, xor);
+
+        testOperation(new byte[] {
+                (byte) 0xAD
+        }, "L", "A", 4, xor);
+
+        testOperationWithSetRegister(new byte[] {
+                (byte) 0xAE, randByte()
+        }, "(HL)", "A", 8, xor, "HL", 1);
+
+        testOperation(new byte[] {
+                (byte) 0xEE, randByte()
+        }, "#", "A", 8, xor);
+    }
+
+    @Test
+    public void compareOpcodes() {
+        testCompare((byte) 0xBF, "A", 4);
+        testCompare((byte) 0xB8, "B", 4);
+        testCompare((byte) 0xB9, "C", 4);
+        testCompare((byte) 0xBA, "D", 4);
+        testCompare((byte) 0xBB, "E", 4);
+        testCompare((byte) 0xBC, "H", 4);
+        testCompare((byte) 0xBD, "L", 4);
+        testCompareWithSetRegister((byte) 0xBE, "(HL)", 8, "HL", 1);
+        testCompare((byte) 0xFE, "#", 8);
+    }
+
+    private void testCompare(byte opcode, String value, int clockCycles) {
+        testCompareWithSetRegister(opcode, value, clockCycles, "", 0);
+    }
+
+    private void testCompareWithSetRegister(byte opcode, String value, int clockCycles, String register, int registerValue) {
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        byte[] memory = new byte[] { opcode, randByte() };
+        controller.setRaw(memory);
+        cpu.A = randByte();
+        cpu.F = randByte();
+        cpu.BC = randByte() << 8 | randByte();
+        cpu.HL = randByte() << 8 | randByte();
+        cpu.DE = randByte() << 8 | randByte();
+        cpu.SP = randByte() << 8 | randByte();
+
+        cpu.setRegistryValue(register, registerValue);
+        int cycles = cpu.doCycle();
+        assertEquals(clockCycles, cycles);
+        byte compareTo = value.equals("#") ? memory[1] : (byte) (cpu.getRegistryValue(value) & 0xFF);
+        assertEquals(cpu.A == compareTo, cpu.Z);
+        assertTrue(cpu.N);
+        assertEquals(cpu.A < compareTo, cpu.C);
+        assertEquals((cpu.A & 0xF) < (compareTo & 0xF), cpu.H);
+    }
+
+    @Test
+    public void orOpcodes() {
+        BiFunction<Byte, Byte, Byte> or = (a, b) -> (byte) (a | b);
+        testOperation(new byte[] {
+                (byte) 0xB7
+        }, "A", "A", 4, or);
+
+        testOperation(new byte[] {
+                (byte) 0xB0
+        }, "B", "A", 4, or);
+
+        testOperation(new byte[] {
+                (byte) 0xB1
+        }, "C", "A", 4, or);
+
+        testOperation(new byte[] {
+                (byte) 0xB2
+        }, "D", "A", 4, or);
+
+        testOperation(new byte[] {
+                (byte) 0xB3
+        }, "E", "A", 4, or);
+
+        testOperation(new byte[] {
+                (byte) 0xB4
+        }, "H", "A", 4, or);
+
+        testOperation(new byte[] {
+                (byte) 0xB5
+        }, "L", "A", 4, or);
+
+        testOperationWithSetRegister(new byte[] {
+                (byte) 0xB6, randByte()
+        }, "(HL)", "A", 8, or, "HL", 1);
+
+        testOperation(new byte[] {
+                (byte) 0xF6, randByte()
+        }, "#", "A", 8, or);
+    }
+
+    @Test
+    public void andOpcodes() {
+        BiFunction<Byte, Byte, Byte> and = (a, b) -> (byte) (a & b);
+        testOperation(new byte[] {
+                (byte) 0xA7
+        }, "A", "A", 4, and);
+
+        testOperation(new byte[] {
+                (byte) 0xA0
+        }, "B", "A", 4, and);
+
+        testOperation(new byte[] {
+                (byte) 0xA1
+        }, "C", "A", 4, and);
+
+        testOperation(new byte[] {
+                (byte) 0xA2
+        }, "D", "A", 4, and);
+
+        testOperation(new byte[] {
+                (byte) 0xA3
+        }, "E", "A", 4, and);
+
+        testOperation(new byte[] {
+                (byte) 0xA4
+        }, "H", "A", 4, and);
+
+        testOperation(new byte[] {
+                (byte) 0xA5
+        }, "L", "A", 4, and);
+
+        testOperationWithSetRegister(new byte[] {
+                (byte) 0xA6, randByte()
+        }, "(HL)", "A", 8, and, "HL", 1);
+
+        testOperation(new byte[] {
+                (byte) 0xE6, randByte()
+        }, "#", "A", 8, and);
+    }
+
+    private void testOperationWithSetRegister(byte[] memory, String parameter, String destination, int clockCycles, BiFunction<Byte, Byte, Byte> expected, String register, int registerValue) {
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        controller.setRaw(memory);
+        cpu.A = randByte();
+        cpu.F = randByte();
+        cpu.BC = randByte() << 8 | randByte();
+        cpu.HL = randByte() << 8 | randByte();
+        cpu.DE = randByte() << 8 | randByte();
+        cpu.SP = randByte() << 8 | randByte();
+
+        cpu.setRegistryValue(register, registerValue);
+
+        byte baseValue = (byte) (cpu.getRegistryValue(destination) & 0xFF);
+        byte param = parameter.equals("#") ? memory[1] : (byte) (cpu.getRegistryValue(parameter) & 0xFF);
+        int cycles = cpu.doCycle();
+        byte finalValue = (byte) (cpu.getRegistryValue(destination) & 0xFF);
+        assertEquals(clockCycles, cycles);
+        assertEquals(expected.apply(baseValue, param) & 0xFF, finalValue & 0xFF);
+    }
+
+    private void testOperation(byte[] memory, String parameter, String destination, int clockCycles, BiFunction<Byte, Byte, Byte> expected) {
+        testOperationWithSetRegister(memory, parameter, destination, clockCycles, expected, "", 0);
     }
 
     @Test
@@ -305,7 +647,7 @@ public class TestCPU {
         testCyclesWithRandomFillAtStartAndSetRegister(new byte[] {
                 0x6E, (byte)0xFF // ld L,(HL)
         }, "HL", 1, 8);
-        assertEquals((byte)0xFF, cpu.getUpper(cpu.HL));
+        assertEquals((byte)0xFF, cpu.getLower(cpu.HL));
     }
 
     @Test
@@ -526,10 +868,7 @@ public class TestCPU {
                 (byte) 0xE0, // ld ($FF00+n),A
                 0x1, 0x0, 0x0, 0x0, 0x0, 0x0/*value to override*/
         };
-        System.out.println(Arrays.toString(memory));
         testCyclesWithRandomFillAtStart(memory, 12);
-        System.out.println(Arrays.toString(memory));
-        System.out.println(cpu.A);
         assertEquals(cpu.A, memory[6]);
 
         memory = new byte[] {
@@ -658,6 +997,8 @@ public class TestCPU {
         assertEquals(memory[3] & 0xFF, cpu.getUpper(cpu.HL) & 0xFF);
     }
 
+
+
     private void testCycles(byte[] instruction, int expected) {
         cpu.hardReset();
         cpu.hardGoto(0);
@@ -695,7 +1036,7 @@ public class TestCPU {
     }
 
     private byte randByte() {
-        int value = ((((int)(Math.random() * 0xF)) << 8) &0xFF) | (int)(Math.random() * 0xF);
+        int value = ((((int)(Math.random() * 0xF)) << 4) &0xFF) | (int)(Math.random() * 0xF);
         if(value == 0 || value == 0xFF)
             return randByte();
         return (byte) value;
