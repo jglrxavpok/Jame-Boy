@@ -52,8 +52,8 @@ public class CPU {
     }
 
     public void push16Bit(int val) {
-        write16Bits(SP, val);
         SP -= 2;
+        write16Bits(SP, val);
     }
 
     public int popPart() {
@@ -1029,12 +1029,45 @@ public class CPU {
                 op_EI();
                 break;
             }
+            case 0xDA: {
+                op_JP_C();
+                break;
+            }
+            case 0xE9: {
+                op_JP_HL_VALUE();
+                break;
+            }
+            case 0xDC: {
+                op_CALL_C();
+                break;
+            }
             default: {
                 System.out.println("[Jame Boy] Unknown opcode: " + Integer.toHexString(opcode));
                 break;
             }
         }
         return clockCycles;
+    }
+
+    private void op_CALL_C() {
+        int addr = nextPart();
+        if(C) {
+            push16Bit(PC-3);
+            PC = addr;
+        }
+        clockCycles = 12;
+    }
+
+    private void op_JP_HL_VALUE() {
+        PC = HL; // TODO: or PC = (HL) ? Seems not clear
+        clockCycles = 4;
+    }
+
+    private void op_JP_C() {
+        int address = nextPart();
+        if(C)
+            PC = address;
+        clockCycles = 12;
     }
 
     private void op_EI() {
@@ -1159,8 +1192,7 @@ public class CPU {
         clockCycles = 12;
         int address = nextPart();
         if (!Z) {
-            clockCycles = 24;
-            push16Bit(PC);
+            push16Bit(PC-3);
             PC = address;
         }
     }
@@ -1204,9 +1236,9 @@ public class CPU {
     }
 
     private void op_CALL() {
-        clockCycles = 24;
+        clockCycles = 12;
         int address = nextPart();
-        push16Bit(PC);
+        push16Bit(PC-3); // accounts for the fact that PC increased twice before start of instruction
         PC = address;
     }
 
@@ -1214,8 +1246,7 @@ public class CPU {
         clockCycles = 12;
         int address = nextPart();
         if (Z) {
-            clockCycles = 24;
-            push16Bit(PC);
+            push16Bit(PC-3);
             PC = address;
         }
     }
@@ -1271,14 +1302,13 @@ public class CPU {
         clockCycles = 12;
         int address = nextPart();
         if (!Z) {
-            clockCycles = 24;
-            push16Bit(PC);
+            push16Bit(PC-3);
             PC = address;
         }
     }
 
     private void op_JP() {
-        clockCycles = 16;
+        clockCycles = 12;
         PC = nextPart();
     }
 
@@ -1957,12 +1987,12 @@ public class CPU {
     }
 
     private void op_DEC_A() {
-        clockCycles = 8;
+        clockCycles = 4;
         A--;
     }
 
     private void op_INC_A() {
-        clockCycles = 8;
+        clockCycles = 4;
         A++;
     }
 
@@ -1984,9 +2014,10 @@ public class CPU {
 
     private void op_JR_C() {
         clockCycles = 8;
+        byte offset = nextByte();
         if (C) {
-            clockCycles = 12;
-            relativeJump(nextByte());
+            relativeJump(offset);
+            PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
         }
     }
 
@@ -2030,9 +2061,10 @@ public class CPU {
 
     private void op_JR_NC() {
         clockCycles = 8;
+        byte offset = nextByte();
         if (!C) {
-            clockCycles = 12;
-            relativeJump(nextByte());
+            relativeJump(offset);
+            PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
         }
     }
 
@@ -2075,9 +2107,10 @@ public class CPU {
 
     private void op_JR_Z() {
         clockCycles = 8;
+        byte offset = nextByte();
         if (Z) {
-            clockCycles = 12;
-            relativeJump(nextByte());
+            relativeJump(offset);
+            PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
         }
     }
 
@@ -2128,9 +2161,10 @@ public class CPU {
 
     private void op_JR_NZ() {
         clockCycles = 8;
+        byte offset = nextByte();
         if (!Z) {
-            relativeJump(nextByte());
-            clockCycles = 12;
+            relativeJump(offset);
+            PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
         }
     }
 
@@ -2171,8 +2205,9 @@ public class CPU {
     }
 
     private void op_JR() {
-        clockCycles = 12;
+        clockCycles = 8;
         relativeJump(nextByte());
+        PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
     }
 
     private void op_RLA() {
@@ -2270,12 +2305,12 @@ public class CPU {
 
     private void op_INC_B() {
         setUpper("BC", increment(getUpper(getRegistryValue("BC"))));
-        clockCycles = 8;
+        clockCycles = 4;
     }
 
     private void op_DEC_B() {
         setUpper("BC", decrement(getUpper(getRegistryValue("BC"))));
-        clockCycles = 8;
+        clockCycles = 4;
     }
 
     private void op_INC_BC() {
@@ -2516,22 +2551,22 @@ public class CPU {
         return (byte) val;
     }
 
-    public byte sla(int val) {
+    public byte sla(byte val) {
         C = (val & (1 << 7)) != 0;
         val <<= 1;
         Z = val == 0;
         H = false;
         N = false;
-        return (byte) val;
+        return val;
     }
 
-    public byte sra(int val) {
-        val = ((val & (1 << 7)) | (val >> 1));
-        C = false;
+    public byte sra(byte val) {
+        C = (val & 0x1) != 0;
+        val = (byte) (((val & (1 << 7)) | (val >> 1)) & 0xFF);
         Z = val == 0;
         H = false;
         N = false;
-        return (byte) val;
+        return val;
     }
 
     public byte swap(byte val) {
@@ -2568,263 +2603,418 @@ public class CPU {
     }
 
     public void relativeJump(int d) {
-        PC = signedAdd(PC, d);
+        PC += d;
     }
 
-    public int signedAdd(int a, int b) {
-        int bSigned = (b);
-        if (bSigned >= 0) {
-            return a + (bSigned);
-        } else {
-            return a - (-bSigned);
-        }
-    }
+    private final String[] cbRegisterList = {"B", "C", "D", "E", "H", "L", "(HL)", "A"};
 
     private void executeCBCode(int b) {
-        switch (b) {
-            case 0x37: {
-                clockCycles = 8;
-                A = swap(A);
-                break;
-            }
+        b = b & 0xFF;
+        if(b >= 0x40 && b <= 0x7F) { // BIT b,register opcodes
+            int registerIndex = (b-0x40) % 8;
+            int bitIndex = (b-0x40) / 8;
+            String register = cbRegisterList[registerIndex];
+            bit(getRegistryValue(register), bitIndex);
+        } else if(b >= 0xC0 && b <= 0xFF) { // SET b,register opcodes
+            int registerIndex = (b-0xC0) % 8;
+            int bitIndex = (b-0xC0) / 8;
+            String register = cbRegisterList[registerIndex];
+            setRegistryValue(register, getRegistryValue(register) | (1<<bitIndex));
+        } else if(b >= 0x80 && b <= 0xBF) { // RST b,register opcodes
+            int registerIndex = (b-0x80) % 8;
+            int bitIndex = (b-0x80) / 8;
+            String register = cbRegisterList[registerIndex];
+            setRegistryValue(register, getRegistryValue(register) & ~(1<<bitIndex));
+        } else {
+            switch (b) {
+                case 0x37: {
+                    clockCycles = 8;
+                    A = swap(A);
+                    break;
+                }
 
-            case 0x30: {
-                clockCycles = 8;
-                setUpper("BC", swap(getUpper(BC)));
-                break;
-            }
+                case 0x30: {
+                    clockCycles = 8;
+                    setUpper("BC", swap(getUpper(BC)));
+                    break;
+                }
 
-            case 0x31: {
-                clockCycles = 8;
-                setLower("BC", swap(getLower(BC)));
-                break;
-            }
+                case 0x31: {
+                    clockCycles = 8;
+                    setLower("BC", swap(getLower(BC)));
+                    break;
+                }
 
-            case 0x32: {
-                clockCycles = 8;
-                setUpper("DE", swap(getUpper(DE)));
-                break;
-            }
+                case 0x32: {
+                    clockCycles = 8;
+                    setUpper("DE", swap(getUpper(DE)));
+                    break;
+                }
 
-            case 0x33: {
-                clockCycles = 8;
-                setLower("DE", swap(getLower(DE)));
-                break;
-            }
+                case 0x33: {
+                    clockCycles = 8;
+                    setLower("DE", swap(getLower(DE)));
+                    break;
+                }
 
-            case 0x34: {
-                clockCycles = 8;
-                setUpper("HL", swap(getUpper(HL)));
-                break;
-            }
+                case 0x34: {
+                    clockCycles = 8;
+                    setUpper("HL", swap(getUpper(HL)));
+                    break;
+                }
 
-            case 0x35: {
-                setLower("HL", swap(getLower(HL)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x35: {
+                    setLower("HL", swap(getLower(HL)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x36: {
-                memory.write(HL, swap(memory.read(HL)));
-                clockCycles = 16;
-                break;
-            }
+                case 0x36: {
+                    memory.write(HL, swap(memory.read(HL)));
+                    clockCycles = 16;
+                    break;
+                }
 
-            case 0x07: {
-                A = rlc(A);
-                clockCycles = 8;
-                break;
-            }
+                case 0x07: {
+                    A = rlc(A);
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x00: {
-                setUpper("BC", rlc(getUpper(BC)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x00: {
+                    setUpper("BC", rlc(getUpper(BC)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x01: {
-                setLower("BC", rlc(getLower(BC)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x01: {
+                    setLower("BC", rlc(getLower(BC)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x02: {
-                setUpper("DE", rlc(getUpper(DE)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x02: {
+                    setUpper("DE", rlc(getUpper(DE)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x03: {
-                setLower("DE", rlc(getLower(DE)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x03: {
+                    setLower("DE", rlc(getLower(DE)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x04: {
-                setUpper("HL", rlc(getUpper(HL)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x04: {
+                    setUpper("HL", rlc(getUpper(HL)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x05: {
-                setLower("HL", rlc(getLower(HL)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x05: {
+                    setLower("HL", rlc(getLower(HL)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x06: {
-                memory.write(HL, rlc(memory.read(HL)));
-                clockCycles = 16;
-                break;
-            }
+                case 0x06: {
+                    memory.write(HL, rlc(memory.read(HL)));
+                    clockCycles = 16;
+                    break;
+                }
 
-            case 0x17: {
-                A = rl(A);
-                clockCycles = 8;
-                break;
-            }
+                case 0x17: {
+                    A = rl(A);
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x10: {
-                setUpper("BC", rl(getUpper(BC)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x10: {
+                    setUpper("BC", rl(getUpper(BC)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x11: {
-                setLower("BC", rl(getLower(BC)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x11: {
+                    setLower("BC", rl(getLower(BC)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x12: {
-                setUpper("DE", rl(getUpper(DE)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x12: {
+                    setUpper("DE", rl(getUpper(DE)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x13: {
-                setLower("DE", rl(getLower(DE)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x13: {
+                    setLower("DE", rl(getLower(DE)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x14: {
-                setUpper("HL", rl(getUpper(HL)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x14: {
+                    setUpper("HL", rl(getUpper(HL)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x15: {
-                setLower("HL", rl(getLower(HL)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x15: {
+                    setLower("HL", rl(getLower(HL)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x16: {
-                memory.write(HL, rl(memory.read(HL)));
-                clockCycles = 16;
-                break;
-            }
+                case 0x16: {
+                    memory.write(HL, rl(memory.read(HL)));
+                    clockCycles = 16;
+                    break;
+                }
 
-            case 0x0F: {
-                A = rrc(A);
-                clockCycles = 8;
-                break;
-            }
+                case 0x0F: {
+                    A = rrc(A);
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x08: {
-                setUpper("BC", rrc(getUpper(BC)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x08: {
+                    setUpper("BC", rrc(getUpper(BC)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x09: {
-                setLower("BC", rrc(getLower(BC)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x09: {
+                    setLower("BC", rrc(getLower(BC)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x0A: {
-                setUpper("DE", rrc(getUpper(DE)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x0A: {
+                    setUpper("DE", rrc(getUpper(DE)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x0B: {
-                setLower("DE", rrc(getLower(DE)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x0B: {
+                    setLower("DE", rrc(getLower(DE)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x0C: {
-                setUpper("HL", rrc(getUpper(HL)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x0C: {
+                    setUpper("HL", rrc(getUpper(HL)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x0D: {
-                setLower("HL", rrc(getLower(HL)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x0D: {
+                    setLower("HL", rrc(getLower(HL)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x0E: {
-                memory.write(HL, rrc(memory.read(HL)));
-                clockCycles = 16;
-                break;
-            }
+                case 0x0E: {
+                    memory.write(HL, rrc(memory.read(HL)));
+                    clockCycles = 16;
+                    break;
+                }
 
-            case 0x1F: {
-                A = rr(A);
-                clockCycles = 8;
-                break;
-            }
+                case 0x1F: {
+                    A = rr(A);
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x18: {
-                setUpper("BC", rr(getUpper(BC)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x18: {
+                    setUpper("BC", rr(getUpper(BC)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x19: {
-                setLower("BC", rr(getLower(BC)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x19: {
+                    setLower("BC", rr(getLower(BC)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x1A: {
-                setUpper("DE", rr(getUpper(DE)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x1A: {
+                    setUpper("DE", rr(getUpper(DE)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x1B: {
-                setLower("DE", rr(getLower(DE)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x1B: {
+                    setLower("DE", rr(getLower(DE)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x1C: {
-                setUpper("HL", rr(getUpper(HL)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x1C: {
+                    setUpper("HL", rr(getUpper(HL)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x1D: {
-                setLower("HL", rr(getLower(HL)));
-                clockCycles = 8;
-                break;
-            }
+                case 0x1D: {
+                    setLower("HL", rr(getLower(HL)));
+                    clockCycles = 8;
+                    break;
+                }
 
-            case 0x1E: {
-                memory.write(HL, rr(memory.read(HL)));
-                clockCycles = 16;
-                break;
-            }
+                case 0x1E: {
+                    memory.write(HL, rr(memory.read(HL)));
+                    clockCycles = 16;
+                    break;
+                }
 
-            default:
-                System.out.println("CPU: Unknown CB code: "+ b);
-                break;
+                case 0x27: {
+                    A = sla(A);
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x20: {
+                    setUpper("BC", sla(getUpper(BC)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x21: {
+                    setLower("BC", sla(getLower(BC)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x22: {
+                    setUpper("DE", sla(getUpper(DE)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x23: {
+                    setLower("DE", sla(getLower(DE)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x24: {
+                    setUpper("HL", sla(getUpper(HL)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x25: {
+                    setLower("HL", sla(getLower(HL)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x26: {
+                    memory.write(HL, sla(memory.read(HL)));
+                    clockCycles = 16;
+                    break;
+                }
+
+                case 0x2F: {
+                    A = sra(A);
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x28: {
+                    setUpper("BC", sra(getUpper(BC)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x29: {
+                    setLower("BC", sra(getLower(BC)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x2A: {
+                    setUpper("DE", sra(getUpper(DE)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x2B: {
+                    setLower("DE", sra(getLower(DE)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x2C: {
+                    setUpper("HL", sra(getUpper(HL)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x2D: {
+                    setLower("HL", sra(getLower(HL)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x2E: {
+                    memory.write(HL, sra(memory.read(HL)));
+                    clockCycles = 16;
+                    break;
+                }
+
+                case 0x3F: {
+                    A = srl(A);
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x38: {
+                    setUpper("BC", srl(getUpper(BC)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x39: {
+                    setLower("BC", srl(getLower(BC)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x3A: {
+                    setUpper("DE", srl(getUpper(DE)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x3B: {
+                    setLower("DE", srl(getLower(DE)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x3C: {
+                    setUpper("HL", srl(getUpper(HL)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x3D: {
+                    setLower("HL", srl(getLower(HL)));
+                    clockCycles = 8;
+                    break;
+                }
+
+                case 0x3E: {
+                    memory.write(HL, srl(memory.read(HL)));
+                    clockCycles = 16;
+                    break;
+                }
+
+                default:
+                    System.out.println("CPU: Unknown CB code: " + Integer.toHexString(b & 0xFF));
+                    break;
+            }
         }
     }
 
