@@ -27,6 +27,31 @@ public class TestCPU {
 
     @Test
     public void shifts() {
+        slaWithHLValue((byte) 0x27, "A", 8, -1);
+    }
+
+    private void slaWithHLValue(byte cbCode, String register, int clockCycles, int valueHL) {
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        byte[] memory = new byte[] {(byte) 0xCB, cbCode, randByte() };
+        controller.setRaw(memory);
+        cpu.A = randByte();
+        cpu.F = randByte();
+        cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        if(valueHL == -1) {
+            cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
+        } else {
+            cpu.HL = valueHL;
+        }
+        cpu.DE = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.SP = (randByte()&0xFF) << 8 | randByte()&0xFF;
+
+        byte baseValue = (byte) (0b10011011 & 0xFF);
+        cpu.setRegistryValue(register, baseValue);
+        byte prev = (byte) cpu.getRegistryValue(register);
+        int cycles = cpu.doCycle();
+        byte current = (byte) cpu.getRegistryValue(register);
+        assertEquals(clockCycles, cycles);
 
     }
 
