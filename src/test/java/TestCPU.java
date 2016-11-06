@@ -26,6 +26,213 @@ public class TestCPU {
     }
 
     @Test
+    public void shifts() {
+
+    }
+
+    @Test
+    public void rotates() {
+        // RLCA
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        controller.setRaw(new byte[] { 0x07 });
+        byte baseValue = (byte) (0b10011011 & 0xFF);
+        cpu.A = baseValue;
+        int cycles = cpu.doCycle();
+        assertEquals(4, cycles);
+        assertEquals(((baseValue & 0xFF) << 1 |1) & 0xFF, cpu.A & 0xFF);
+        assertFalse(cpu.N);
+        assertFalse(cpu.H);
+        assertTrue(cpu.C);
+        assertFalse(cpu.Z);
+
+
+        // RLA
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        controller.setRaw(new byte[] { 0x17 });
+        cpu.A = baseValue;
+        cpu.C = true;
+        cycles = cpu.doCycle();
+        assertEquals(4, cycles);
+        assertEquals((((baseValue & 0xFF) << 1) |1) &0xFF, cpu.A & 0xFF);
+        assertFalse(cpu.N);
+        assertFalse(cpu.H);
+        assertTrue(cpu.C);
+        assertFalse(cpu.Z);
+
+        // RRCA
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        controller.setRaw(new byte[] { 0x0F });
+        cpu.A = baseValue;
+        cycles = cpu.doCycle();
+        assertEquals(4, cycles);
+        assertEquals(((baseValue) >> 1 |0x80) & 0xFF, cpu.A & 0xFF);
+        assertFalse(cpu.N);
+        assertFalse(cpu.H);
+        assertTrue(cpu.C);
+        assertFalse(cpu.Z);
+
+
+        // RRA
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        controller.setRaw(new byte[] { 0x1F });
+        cpu.A = baseValue;
+        cpu.C = true;
+        cycles = cpu.doCycle();
+        assertEquals(4, cycles);
+        assertEquals((((baseValue) >> 1) | 0b10000000) &0xFF, cpu.A & 0xFF);
+        assertFalse(cpu.N);
+        assertFalse(cpu.H);
+        assertTrue(cpu.C);
+        assertFalse(cpu.Z);
+
+        testRLCWithHLValue((byte)0x07, "A", 8, -1);
+        testRLCWithHLValue((byte)0x00, "B", 8, -1);
+        testRLCWithHLValue((byte)0x01, "C", 8, -1);
+        testRLCWithHLValue((byte)0x02, "D", 8, -1);
+        testRLCWithHLValue((byte)0x03, "E", 8, -1);
+        testRLCWithHLValue((byte)0x04, "H", 8, -1);
+        testRLCWithHLValue((byte)0x05, "L", 8, -1);
+        testRLCWithHLValue((byte)0x06, "(HL)", 16, 2);
+
+        testRLWithHLValue((byte)0x17, "A", 8, -1);
+        testRLWithHLValue((byte)0x10, "B", 8, -1);
+        testRLWithHLValue((byte)0x11, "C", 8, -1);
+        testRLWithHLValue((byte)0x12, "D", 8, -1);
+        testRLWithHLValue((byte)0x13, "E", 8, -1);
+        testRLWithHLValue((byte)0x14, "H", 8, -1);
+        testRLWithHLValue((byte)0x15, "L", 8, -1);
+        testRLWithHLValue((byte)0x16, "(HL)", 16, 2);
+
+        testRRCWithHLValue((byte)0x0F, "A", 8, -1);
+        testRRCWithHLValue((byte)0x08, "B", 8, -1);
+        testRRCWithHLValue((byte)0x09, "C", 8, -1);
+        testRRCWithHLValue((byte)0x0A, "D", 8, -1);
+        testRRCWithHLValue((byte)0x0B, "E", 8, -1);
+        testRRCWithHLValue((byte)0x0C, "H", 8, -1);
+        testRRCWithHLValue((byte)0x0D, "L", 8, -1);
+        testRRCWithHLValue((byte)0x0E, "(HL)", 16, 2);
+
+        testRRWithHLValue((byte)0x1F, "A", 8, -1);
+        testRRWithHLValue((byte)0x18, "B", 8, -1);
+        testRRWithHLValue((byte)0x19, "C", 8, -1);
+        testRRWithHLValue((byte)0x1A, "D", 8, -1);
+        testRRWithHLValue((byte)0x1B, "E", 8, -1);
+        testRRWithHLValue((byte)0x1C, "H", 8, -1);
+        testRRWithHLValue((byte)0x1D, "L", 8, -1);
+        testRRWithHLValue((byte)0x1E, "(HL)", 16, 2);
+    }
+
+    private void testRLCWithHLValue(byte cbCode, String register, int clockCycles, int valueHL) {
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        byte[] memory = new byte[] {(byte) 0xCB, cbCode, randByte() };
+        controller.setRaw(memory);
+        cpu.A = randByte();
+        cpu.F = randByte();
+        cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        if(valueHL == -1) {
+            cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
+        } else {
+            cpu.HL = valueHL;
+        }
+        cpu.DE = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.SP = (randByte()&0xFF) << 8 | randByte()&0xFF;
+
+        byte baseValue = (byte) (0b10011011 & 0xFF);
+        cpu.setRegistryValue(register, baseValue);
+        byte prev = (byte) cpu.getRegistryValue(register);
+        int cycles = cpu.doCycle();
+        byte current = (byte) cpu.getRegistryValue(register);
+        assertEquals(clockCycles, cycles);
+        assertEquals((((prev&0xFF) << 1) | 0x1) & 0xFF, current & 0xFF);
+        assertTrue(cpu.C);
+    }
+
+    private void testRLWithHLValue(byte cbCode, String register, int clockCycles, int valueHL) {
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        byte[] memory = new byte[] {(byte) 0xCB, cbCode, randByte() };
+        controller.setRaw(memory);
+        cpu.A = randByte();
+        cpu.F = randByte();
+        cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        if(valueHL == -1) {
+            cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
+        } else {
+            cpu.HL = valueHL;
+        }
+        cpu.DE = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.SP = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.C = true;
+
+        byte baseValue = (byte) (0b10011011 & 0xFF);
+        cpu.setRegistryValue(register, baseValue);
+        byte prev = (byte) cpu.getRegistryValue(register);
+        int cycles = cpu.doCycle();
+        byte current = (byte) cpu.getRegistryValue(register);
+        assertEquals(clockCycles, cycles);
+        assertEquals((((prev&0xFF) << 1) | 1) & 0xFF, current & 0xFF);
+        assertTrue(cpu.C);
+    }
+
+    private void testRRCWithHLValue(byte cbCode, String register, int clockCycles, int valueHL) {
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        byte[] memory = new byte[] {(byte) 0xCB, cbCode, randByte() };
+        controller.setRaw(memory);
+        cpu.A = randByte();
+        cpu.F = randByte();
+        cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        if(valueHL == -1) {
+            cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
+        } else {
+            cpu.HL = valueHL;
+        }
+        cpu.DE = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.SP = (randByte()&0xFF) << 8 | randByte()&0xFF;
+
+        byte baseValue = (byte) (0b10011011 & 0xFF);
+        cpu.setRegistryValue(register, baseValue);
+        byte prev = (byte) cpu.getRegistryValue(register);
+        int cycles = cpu.doCycle();
+        byte current = (byte) cpu.getRegistryValue(register);
+        assertEquals(clockCycles, cycles);
+        assertEquals((((prev&0xFF) >> 1) | 0x80) & 0xFF, current & 0xFF);
+        assertTrue(cpu.C);
+    }
+
+    private void testRRWithHLValue(byte cbCode, String register, int clockCycles, int valueHL) {
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        byte[] memory = new byte[] {(byte) 0xCB, cbCode, randByte() };
+        controller.setRaw(memory);
+        cpu.A = randByte();
+        cpu.F = randByte();
+        cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        if(valueHL == -1) {
+            cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
+        } else {
+            cpu.HL = valueHL;
+        }
+        cpu.DE = (randByte()&0xFF) << 8 | randByte()&0xFF;
+        cpu.SP = (randByte()&0xFF) << 8 | randByte()&0xFF;
+
+        cpu.C = true;
+        byte baseValue = (byte) (0b10011011 & 0xFF);
+        cpu.setRegistryValue(register, baseValue);
+        byte prev = (byte) cpu.getRegistryValue(register);
+        int cycles = cpu.doCycle();
+        byte current = (byte) cpu.getRegistryValue(register);
+        assertEquals(clockCycles, cycles);
+        assertEquals((((prev&0xFF) >> 1) | 0x80) & 0xFF, current & 0xFF);
+        assertTrue(cpu.C);
+    }
+
+    @Test
     public void misc() {
         swap((byte) 0x37, "A", 8, -1);
         swap((byte) 0x30, "B", 8, -1);
@@ -109,8 +316,22 @@ public class TestCPU {
         assertEquals(4, cycles);
         assertFalse(cpu.areInterruptsDisabled());
         controller.setRaw(new byte[] {(byte) 0x00}); // interrupts are disabled after the next instruction
+        cpu.hardGoto(0);
         cpu.doCycle();
         assertTrue(cpu.areInterruptsDisabled());
+
+        // EI
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        controller.setRaw(new byte[] {(byte) 0xFB});
+        cpu.forceDisableInterrupts();
+        cycles = cpu.doCycle();
+        assertEquals(4, cycles);
+        assertTrue(cpu.areInterruptsDisabled());
+        controller.setRaw(new byte[] {(byte) 0x00}); // interrupts are enabled after the next instruction
+        cpu.hardGoto(0);
+        cpu.doCycle();
+        assertFalse(cpu.areInterruptsDisabled());
     }
 
     private void swap(byte cbCode, String valueName, int clockCycles, int valueHL) {

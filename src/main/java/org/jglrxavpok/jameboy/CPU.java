@@ -24,6 +24,8 @@ public class CPU {
     private boolean halted;
     private MemoryController memory;
     private boolean disabledInterrupts;
+    private boolean disableInterruptsNextInstruction;
+    private boolean enableInterruptsNextInstruction;
 
     public void setEmulator(JameBoyApp emu) {
         this.emulator = emu;
@@ -81,6 +83,14 @@ public class CPU {
     }
 
     private int executeOP(int opcode) {
+        if(disableInterruptsNextInstruction) {
+            disableInterruptsNextInstruction = false;
+            disabledInterrupts = true;
+        }
+        if(enableInterruptsNextInstruction) {
+            enableInterruptsNextInstruction = false;
+            disabledInterrupts = false;
+        }
         opcode = opcode & 0xFF;
         switch (opcode) {
             case 0x00: {
@@ -1011,12 +1021,30 @@ public class CPU {
                 op_ADD_SP();
                 break;
             }
+            case 0xF3: {
+                op_DI();
+                break;
+            }
+            case 0xFB: {
+                op_EI();
+                break;
+            }
             default: {
                 System.out.println("[Jame Boy] Unknown opcode: " + Integer.toHexString(opcode));
                 break;
             }
         }
         return clockCycles;
+    }
+
+    private void op_EI() {
+        enableInterruptsNextInstruction = true;
+        clockCycles = 4;
+    }
+
+    private void op_DI() {
+        disableInterruptsNextInstruction = true;
+        clockCycles = 4;
     }
 
     private void op_ADD_SP() {
@@ -2307,6 +2335,8 @@ public class CPU {
             setUpper("HL", registryValue & 0xFF);
         } else if (registry.equals("L")) {
             setLower("HL", registryValue & 0xFF);
+        } else if(registry.equals("(HL)")) {
+            memory.write(HL, (byte) (registryValue & 0xFF));
         }
     }
 
@@ -2438,7 +2468,7 @@ public class CPU {
         C = A < byteValue;
     }
 
-    public byte rl(int val) {
+    public byte rl(byte val) {
         boolean oldcarry = C;
         C = (val & (1 << 7)) == (1 << 7);
         H = false;
@@ -2448,22 +2478,21 @@ public class CPU {
             val |= 0x1;
         }
         Z = val == 0;
-        return (byte) val;
+        return val;
     }
 
-    public byte rlc(int val) {
+    public byte rlc(byte val) {
         C = (val & (1 << 7)) == (1 << 7);
         H = false;
         N = false;
         val <<= 1;
-        if (C) {
-            val |= 0x1;
-        }
+        if(C)
+            val ^= 0x1;
         Z = val == 0;
-        return (byte) val;
+        return val;
     }
 
-    public byte rr(int val) {
+    public byte rr(byte val) {
         boolean oldcarry = C;
         C = (val & 0x1) == 0x1;
         H = false;
@@ -2476,14 +2505,13 @@ public class CPU {
         return (byte) val;
     }
 
-    public byte rrc(int val) {
+    public byte rrc(byte val) {
         C = (val & 0x1) == 0x1;
         H = false;
         N = false;
         val >>= 1;
-        if (C) {
-            val |= (1 << 7);
-        }
+        if(C)
+            val |= 0x80;
         Z = val == 0;
         return (byte) val;
     }
@@ -2553,7 +2581,6 @@ public class CPU {
     }
 
     private void executeCBCode(int b) {
-        // TODO: Prefix CB implementation
         switch (b) {
             case 0x37: {
                 clockCycles = 8;
@@ -2602,6 +2629,202 @@ public class CPU {
                 clockCycles = 16;
                 break;
             }
+
+            case 0x07: {
+                A = rlc(A);
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x00: {
+                setUpper("BC", rlc(getUpper(BC)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x01: {
+                setLower("BC", rlc(getLower(BC)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x02: {
+                setUpper("DE", rlc(getUpper(DE)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x03: {
+                setLower("DE", rlc(getLower(DE)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x04: {
+                setUpper("HL", rlc(getUpper(HL)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x05: {
+                setLower("HL", rlc(getLower(HL)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x06: {
+                memory.write(HL, rlc(memory.read(HL)));
+                clockCycles = 16;
+                break;
+            }
+
+            case 0x17: {
+                A = rl(A);
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x10: {
+                setUpper("BC", rl(getUpper(BC)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x11: {
+                setLower("BC", rl(getLower(BC)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x12: {
+                setUpper("DE", rl(getUpper(DE)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x13: {
+                setLower("DE", rl(getLower(DE)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x14: {
+                setUpper("HL", rl(getUpper(HL)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x15: {
+                setLower("HL", rl(getLower(HL)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x16: {
+                memory.write(HL, rl(memory.read(HL)));
+                clockCycles = 16;
+                break;
+            }
+
+            case 0x0F: {
+                A = rrc(A);
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x08: {
+                setUpper("BC", rrc(getUpper(BC)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x09: {
+                setLower("BC", rrc(getLower(BC)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x0A: {
+                setUpper("DE", rrc(getUpper(DE)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x0B: {
+                setLower("DE", rrc(getLower(DE)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x0C: {
+                setUpper("HL", rrc(getUpper(HL)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x0D: {
+                setLower("HL", rrc(getLower(HL)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x0E: {
+                memory.write(HL, rrc(memory.read(HL)));
+                clockCycles = 16;
+                break;
+            }
+
+            case 0x1F: {
+                A = rr(A);
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x18: {
+                setUpper("BC", rr(getUpper(BC)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x19: {
+                setLower("BC", rr(getLower(BC)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x1A: {
+                setUpper("DE", rr(getUpper(DE)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x1B: {
+                setLower("DE", rr(getLower(DE)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x1C: {
+                setUpper("HL", rr(getUpper(HL)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x1D: {
+                setLower("HL", rr(getLower(HL)));
+                clockCycles = 8;
+                break;
+            }
+
+            case 0x1E: {
+                memory.write(HL, rr(memory.read(HL)));
+                clockCycles = 16;
+                break;
+            }
+
+            default:
+                System.out.println("CPU: Unknown CB code: "+ b);
+                break;
         }
     }
 
@@ -2620,5 +2843,9 @@ public class CPU {
 
     public boolean areInterruptsDisabled() {
         return disabledInterrupts;
+    }
+
+    public void forceDisableInterrupts() {
+        disabledInterrupts = true;
     }
 }
