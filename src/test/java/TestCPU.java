@@ -83,6 +83,34 @@ public class TestCPU {
         cpu.hardGoto(0);
         cycles = cpu.doCycle();
         assertEquals(4, cycles);
+
+        // HALT
+        controller.setRaw(new byte[] { 0x76 });
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        cycles = cpu.doCycle();
+        assertEquals(4, cycles);
+        assertTrue(cpu.isHalted());
+
+        // STOP
+        controller.setRaw(new byte[] { 0x10, 0x00 });
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        cycles = cpu.doCycle();
+        assertEquals(4, cycles);
+        assertTrue(cpu.isStopped());
+        cpu.turnOn();
+
+        // DI
+        cpu.hardReset();
+        cpu.hardGoto(0);
+        controller.setRaw(new byte[] {(byte) 0xF3});
+        cycles = cpu.doCycle();
+        assertEquals(4, cycles);
+        assertFalse(cpu.areInterruptsDisabled());
+        controller.setRaw(new byte[] {(byte) 0x00}); // interrupts are disabled after the next instruction
+        cpu.doCycle();
+        assertTrue(cpu.areInterruptsDisabled());
     }
 
     private void swap(byte cbCode, String valueName, int clockCycles, int valueHL) {

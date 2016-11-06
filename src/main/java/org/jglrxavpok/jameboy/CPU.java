@@ -23,6 +23,7 @@ public class CPU {
     private boolean stop;
     private boolean halted;
     private MemoryController memory;
+    private boolean disabledInterrupts;
 
     public void setEmulator(JameBoyApp emu) {
         this.emulator = emu;
@@ -76,6 +77,7 @@ public class CPU {
         BC = DE = HL = 0;
         SP = 0;
         PC = 0x100;
+        halted = false;
     }
 
     private int executeOP(int opcode) {
@@ -1641,6 +1643,7 @@ public class CPU {
 
     private void op_HALT() {
         halted = true;
+        clockCycles = 4;
     }
 
     private void op_LD_HL_VALUE_L() {
@@ -2600,5 +2603,22 @@ public class CPU {
                 break;
             }
         }
+    }
+
+    public boolean isHalted() {
+        return halted;
+    }
+
+    public boolean isStopped() {
+        return stop;
+    }
+
+    public void turnOn() {
+        stop = false;
+        hardReset();
+    }
+
+    public boolean areInterruptsDisabled() {
+        return disabledInterrupts;
     }
 }
