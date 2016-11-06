@@ -2,6 +2,7 @@ import org.jglrxavpok.jameboy.CPU;
 import org.jglrxavpok.jameboy.memory.BaseMemoryController;
 import org.junit.Before;
 import org.junit.Test;
+
 import java.util.function.BiFunction;
 
 import static org.junit.Assert.*;

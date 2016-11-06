@@ -9,16 +9,22 @@ import org.jglrxavpok.jameboy.memory.MemoryControllers;
  */
 public class JameBoy {
 
+    private final CPU cpu;
     private GameROM currentROM;
     private MemoryController memoryController;
 
     public JameBoy() {
-
+        cpu = new CPU();
     }
 
     public void loadROM(GameROM rom) {
         currentROM = rom;
         memoryController = MemoryControllers.create(rom);
+        cpu.setMemory(memoryController);
+    }
+
+    public void boot() {
+        cpu.turnOn();
     }
 
     public GameROM getCurrentROM() {
@@ -30,7 +36,7 @@ public class JameBoy {
     }
 
     public void cycle() {
-
+        cpu.doCycle();
     }
 
 }

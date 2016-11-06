@@ -142,7 +142,7 @@ public class MBC1 extends BaseMemoryController {
             int effectiveRAMBank = 0;
             if(inRamBankingMode)
                 effectiveRAMBank = currentRAMBank;
-            ram.put(effectiveRAMBank * 0x2000, value);
+            ram.put(effectiveRAMBank * 0x2000 + (index-0xA000), value);
         }
     }
 
@@ -165,7 +165,7 @@ public class MBC1 extends BaseMemoryController {
             int effectiveRAMBank = 0;
             if(inRamBankingMode)
                 effectiveRAMBank = currentRAMBank;
-            return rom.get(index & 0x1FFF + effectiveRAMBank * 0x2000);
+            return ram.get((index - 0xA000) + effectiveRAMBank * 0x2000);
         }
         return super.read(index);
     }

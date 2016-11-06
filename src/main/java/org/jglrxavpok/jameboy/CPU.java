@@ -1080,8 +1080,7 @@ public class CPU {
                 break;
             }
             default: {
-                System.out.println("[Jame Boy] Unknown opcode: " + Integer.toHexString(opcode));
-                break;
+                throw new IllegalArgumentException("Unknown opcode: " + Integer.toHexString(opcode));
             }
         }
         return clockCycles;
@@ -3082,6 +3081,42 @@ public class CPU {
     public void turnOn() {
         stop = false;
         hardReset();
+        A = 1;
+        BC = 0x13;
+        DE = 0xD8;
+        HL = 0x14D;
+        SP = 0xFFFE;
+        memory.write(0xFF05, (byte)0x00); // TIMA
+        memory.write(0xFF06, (byte)0x00); // TMA
+        memory.write(0xFF07, (byte)0x00); // TAC
+        memory.write(0xFF10, (byte)0x80); // NR10
+        memory.write(0xFF11, (byte)0xBF); // NR11
+        memory.write(0xFF12, (byte)0xF3); // NR12
+        memory.write(0xFF14, (byte)0xBF); // NR14
+        memory.write(0xFF16, (byte)0x3F); // NR21
+        memory.write(0xFF17, (byte)0x00); // NR22
+        memory.write(0xFF19, (byte)0xBF); // NR24
+        memory.write(0xFF1A, (byte)0x7F); // NR30
+        memory.write(0xFF1B, (byte)0xFF); // NR31
+        memory.write(0xFF1C, (byte)0x9F); // NR32
+        memory.write(0xFF1E, (byte)0xBF); // NR33
+        memory.write(0xFF20, (byte)0xFF); // NR41
+        memory.write(0xFF21, (byte)0x00); // NR42
+        memory.write(0xFF22, (byte)0x00); // NR43
+        memory.write(0xFF23, (byte)0xBF); // NR30
+        memory.write(0xFF24, (byte)0x77); // NR50
+        memory.write(0xFF25, (byte)0xF3); // NR51
+        memory.write(0xFF26, (byte)0xF1); // NR52
+        memory.write(0xFF40, (byte)0x91); // LCDC
+        memory.write(0xFF42, (byte)0x00); // SCY
+        memory.write(0xFF43, (byte)0x00); // SCX
+        memory.write(0xFF45, (byte)0x00); // LYC
+        memory.write(0xFF47, (byte)0xFC); // BGP
+        memory.write(0xFF48, (byte)0xFF); // OBP0
+        memory.write(0xFF49, (byte)0xFF); // OBP1
+        memory.write(0xFF4A, (byte)0x00); // WY
+        memory.write(0xFF4B, (byte)0x00); // WX
+        memory.write(0xFFFF, (byte)0x00); // IE
     }
 
     public boolean areInterruptsDisabled() {
@@ -3090,5 +3125,9 @@ public class CPU {
 
     public void forceDisableInterrupts() {
         disabledInterrupts = true;
+    }
+
+    public MemoryController getMemory() {
+        return memory;
     }
 }

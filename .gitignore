@@ -17,3 +17,5 @@ out/
 
 # Gradle
 .gradle/
+
+test/java/secret/

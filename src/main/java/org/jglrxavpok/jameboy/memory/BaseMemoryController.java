@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 
 public class BaseMemoryController implements MemoryController {
 
-    private ByteBuffer internalRAM = ByteBuffer.allocate(8*1024);
+    private ByteBuffer internalRAM = ByteBuffer.allocate(0xE000 - 0xC000 +1);
 
     @Override
     public void write(int index, byte value) {
