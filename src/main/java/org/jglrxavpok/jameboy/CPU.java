@@ -1041,12 +1041,66 @@ public class CPU {
                 op_CALL_C();
                 break;
             }
+            case 0xD7: {
+                rst(0x10);
+                clockCycles = 32;
+                break;
+            }
+            case 0xDF: {
+                rst(0x18);
+                clockCycles = 32;
+                break;
+            }
+            case 0xE7: {
+                rst(0x20);
+                clockCycles = 32;
+                break;
+            }
+            case 0xEF: {
+                rst(0x28);
+                clockCycles = 32;
+                break;
+            }
+            case 0xF7: {
+                rst(0x30);
+                clockCycles = 32;
+                break;
+            }
+            case 0xFF: {
+                rst(0x38);
+                clockCycles = 32;
+                break;
+            }
+            case 0xD8: {
+                op_RET_C();
+                break;
+            }
+            case 0xD9: {
+                op_RETI();
+                break;
+            }
             default: {
                 System.out.println("[Jame Boy] Unknown opcode: " + Integer.toHexString(opcode));
                 break;
             }
         }
         return clockCycles;
+    }
+
+    private void op_RETI() {
+        int addr = popPart();
+        PC = addr;
+        disabledInterrupts = false;
+        clockCycles = 8;
+    }
+
+    private void op_RET_C() {
+        clockCycles = 8;
+        int address = nextPart();
+        if (C) {
+            push16Bit(PC-3);
+            PC = address;
+        }
     }
 
     private void op_CALL_C() {
@@ -1219,15 +1273,14 @@ public class CPU {
         clockCycles = 8;
         int address = nextPart();
         if (!C) {
-            clockCycles = 20;
-            push16Bit(PC);
+            push16Bit(PC-3);
             PC = address;
         }
     }
 
     private void op_RST_08H() {
         rst(0x08);
-        clockCycles = 16;
+        clockCycles = 32;
     }
 
     private void op_ADC_A() {
@@ -1272,20 +1325,20 @@ public class CPU {
 
     private void op_RET() {
         PC = popPart();
-        clockCycles = 16;
+        clockCycles = 8;
     }
 
     private void op_RET_Z() {
         clockCycles = 8;
+        int addr = popPart();
         if (Z) {
-            PC = popPart();
-            clockCycles = 20;
+            PC = addr;
         }
     }
 
     private void op_RST_00H() {
         rst(0x00);
-        clockCycles = 16;
+        clockCycles = 32;
     }
 
     private void op_ADD_A() {
@@ -1328,9 +1381,9 @@ public class CPU {
 
     private void op_RET_NZ() {
         clockCycles = 8;
+        int addr = popPart();
         if (!Z) {
-            PC = popPart();
-            clockCycles = 20;
+            PC = addr;
         }
     }
 
@@ -2431,7 +2484,7 @@ public class CPU {
     }
 
     public void rst(int addr) {
-        push16Bit(PC);
+        push16Bit(PC-1);
         PC = addr;
     }
 
