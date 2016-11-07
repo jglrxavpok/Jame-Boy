@@ -1,4 +1,4 @@
-package org.jglrxavpok.jameboy.graphics;
+package org.jglrxavpok.jameboy.graphics.old;
 
 public class FontRenderer {
 

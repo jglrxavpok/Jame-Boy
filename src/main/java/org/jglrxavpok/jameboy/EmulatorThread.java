@@ -1,6 +1,6 @@
 package org.jglrxavpok.jameboy;
 
-import org.jglrxavpok.jameboy.graphics.Screen;
+import org.jglrxavpok.jameboy.graphics.old.Screen;
 import org.jglrxavpok.jameboy.input.Mouse;
 
 import java.awt.*;

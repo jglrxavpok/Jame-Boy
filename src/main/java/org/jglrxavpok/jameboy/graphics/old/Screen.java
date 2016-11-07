@@ -1,4 +1,4 @@
-package org.jglrxavpok.jameboy.graphics;
+package org.jglrxavpok.jameboy.graphics.old;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;

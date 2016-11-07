@@ -1,7 +1,7 @@
 package org.jglrxavpok.jameboy;
 
-import org.jglrxavpok.jameboy.graphics.GPU;
-import org.jglrxavpok.jameboy.graphics.Screen;
+import org.jglrxavpok.jameboy.graphics.old.OldGPU;
+import org.jglrxavpok.jameboy.graphics.old.Screen;
 import org.jglrxavpok.jameboy.input.Keyboard;
 import org.jglrxavpok.jameboy.input.Mouse;
 
@@ -20,13 +20,13 @@ public class JameBoyApp {
     private GBMemory memory;
     private boolean romLoaded;
     private CPU cpu;
-    private GPU gpu;
+    private OldGPU oldGpu;
 
     public JameBoyApp() {
         memory = new GBMemory();
         cpu = new CPU();
         cpu.setEmulator(this);
-        gpu = new GPU();
+        oldGpu = new OldGPU();
     }
 
     public static void main(String[] args) {
@@ -93,8 +93,8 @@ public class JameBoyApp {
         return cpu;
     }
 
-    public GPU getGPU() {
-        return gpu;
+    public OldGPU getGPU() {
+        return oldGpu;
     }
 
     protected void load(byte[] rom) {

@@ -1,4 +1,4 @@
-package org.jglrxavpok.jameboy.graphics;
+package org.jglrxavpok.jameboy.graphics.old;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;

@@ -44,4 +44,8 @@ public final class BitUtils {
         }
         return true;
     }
+
+    public static boolean getBit(int value, int index) {
+        return (value & (1 << index)) != 0;
+    }
 }
