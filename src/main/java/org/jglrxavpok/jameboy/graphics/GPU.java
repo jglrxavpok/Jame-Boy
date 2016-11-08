@@ -3,6 +3,7 @@ package org.jglrxavpok.jameboy.graphics;
 import org.jglrxavpok.jameboy.utils.BitUtils;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -42,10 +43,13 @@ public class GPU {
     private int[] backgroundPalette;
     private int currentSpriteHeight;
     private boolean shouldRenderSprites;
+    private boolean shouldRenderBackground;
     private int windowX;
     private int windowY;
     private int scrollX;
     private int scrollY;
+    private int backgroundTileMapAddress;
+    private int backgroundTileDataAddress;
 
     public GPU() {
         videoRAM = ByteBuffer.allocate(8*1024);
@@ -79,6 +83,7 @@ public class GPU {
 
         // TODO: Remove, only debug for now
         shouldRenderSprites = true;
+        shouldRenderBackground = true;
     }
 
     public boolean isValidGPUAddress(int address) {
@@ -101,6 +106,8 @@ public class GPU {
         } else if(index == ADDR_LCDC) {
             // TODO
             currentSpriteHeight = BitUtils.getBit(value, 2) ? 16 : 8;
+            backgroundTileMapAddress = BitUtils.getBit(value, 3) ? 0x9C00 : 0x9800;
+            backgroundTileDataAddress = BitUtils.getBit(value, 4) ? 0x8000 : 0x8800;
         } else if(index == ADDR_SCROLL_X) {
             scrollX = value & 0xFF;
         } else if(index == ADDR_SCROLL_Y) {
@@ -189,26 +196,63 @@ public class GPU {
      * Renders line number 'lineY'
      */
     private void renderSingleLine() {
-        // todo Arrays.fill(pixels, lineY*WIDTH, (lineY+1)*WIDTH, 0xFFFFFFFF);
+        Arrays.fill(pixels, lineY*WIDTH, (lineY+1)*WIDTH, 0xFFFFFFFF);
+        if(shouldRenderBackground) {
+            renderBackgroundLine();
+        }
+
         if(shouldRenderSprites) {
             renderSpriteLine();
         }
+    }
+
+    private void renderBackgroundLine() {
+        for (int x = 0; x < WIDTH; x++) {
+            int tileX = x+scrollX;
+            int tileY = lineY+scrollY;
+
+            int tileColumn = tileX / 8;
+            int tileRow = tileY / 8;
+
+            int localX = (tileX % 8);
+            int localY = (tileY % 8);
+
+            int color = getBackgroundColor(tileColumn, tileRow, localX, localY);
+
+            pixels[x+lineY*WIDTH] = color;
+        }
+    }
+
+    private int getBackgroundColor(int column, int row, int x, int y) {
+        byte patternNumberByte = read(column+row*32 + backgroundTileMapAddress);
+        int patternNumber;
+        if(backgroundTileDataAddress == 0x8000) {
+            patternNumber = patternNumberByte & 0xFF;
+        } else {
+            patternNumber = (int)patternNumberByte;
+        }
+        int startAddress = patternNumber*16;
+        int byteIndex = y*2;
+        x = 7 - x;
+        int low = read(backgroundTileDataAddress+startAddress+byteIndex) & 0xFF;
+        int high = read(backgroundTileDataAddress+startAddress+byteIndex+1) & 0xFF;
+        int colorIndex = ((low&0xFF) & (1 << (x))) >> (x) | (((high&0xFF) & (1 << (x))) >> (x)) <<1;
+        return backgroundPalette[colorIndex];
     }
 
     private void renderSpriteLine() {
         final int spriteHeight = currentSpriteHeight;
         final int spriteWidth = 8;
         for (int screenX = 0; screenX < WIDTH; screenX++) {
-            int color = 0xFFFFFFFF;
+            int color = 0x0;
             for (SpriteBlock sprite : spriteBlocks) {
                 sprite.loadFromMemory();
                 if(!sprite.isEnabledForRendering() || !sprite.isVisible())
                     continue;
-                int x = screenX + scrollX;
-                int y = lineY + scrollY;
-                if(sprite.getScreenPositionX() <= x && sprite.getScreenPositionX()+spriteWidth-1 >= x) { // the vertical line intersects the sprite
+                int y = lineY;
+                if(sprite.getScreenPositionX() <= screenX && sprite.getScreenPositionX()+spriteWidth-1 >= screenX) { // the vertical line intersects the sprite
                     if(sprite.getScreenPositionY() <= y && sprite.getScreenPositionY() +spriteHeight-1 >= y) { // the scan line intersects the sprite
-                        int localSpriteX = x-sprite.getScreenPositionX();
+                        int localSpriteX = screenX -sprite.getScreenPositionX();
                         int localSpriteY = y-sprite.getScreenPositionY();
                         if(sprite.isFlippedOnX()) {
                             localSpriteX = spriteWidth-1-localSpriteX;
@@ -216,14 +260,13 @@ public class GPU {
                         if(sprite.isFlippedOnY()) {
                             localSpriteY = spriteHeight-1-localSpriteY;
                         }
-                        int spriteColor = getColorForSprite(sprite.getPatternNumber(), localSpriteX, localSpriteY, sprite.getPalette());
-                        if(spriteColor >>> 24 > 0) { // if alpha > 0, draw the color
-                            color = spriteColor;
-                        }
+                        color = getColorForSprite(sprite.getPatternNumber(), localSpriteX, localSpriteY, sprite.getPalette());
                     }
                 }
+                if(color >>> 24 > 0) { // if alpha > 0, draw the color
+                    pixels[screenX + lineY * WIDTH] = color;
+                }
             }
-            pixels[screenX+lineY*WIDTH] = color;
         }
     }
 
