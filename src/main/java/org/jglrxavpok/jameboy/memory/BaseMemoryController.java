@@ -20,8 +20,7 @@ public class BaseMemoryController implements MemoryController {
         }
 
         if(gpu != null) {
-            if((index >= GPU.ADDR_OAM_START && index <= GPU.ADDR_OAM_END) /*Video RAM*/
-                    || (index >= GPU.ADDR_VRAM_START && index < GPU.ADDR_VRAM_END /*OAM*/)) {
+            if(gpu.isValidGPUAddress(index)) {
                 gpu.write(index, value);
             }
         }
@@ -38,8 +37,7 @@ public class BaseMemoryController implements MemoryController {
         }
 
         if(gpu != null) {
-            if((index >= GPU.ADDR_OAM_START && index <= GPU.ADDR_OAM_END) /*Video RAM*/
-                    || (index >= GPU.ADDR_VRAM_START && index < GPU.ADDR_VRAM_END /*OAM*/)) {
+            if(gpu.isValidGPUAddress(index)) {
                 return gpu.read(index);
             }
         }

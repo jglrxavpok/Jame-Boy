@@ -16,23 +16,19 @@ public class TestDisplayVideoWithMemoryDump {
 
     public static void main(String[] args) throws IOException {
         JameBoy core = new JameBoy();
-        byte[] dump = readRaw("memdumps/DrMarioDump.DMP");
+        byte[] dump = readRaw("memdumps/LinksAwakening.DMP");
         ByteBuffer rom = ByteBuffer.allocate(0xFFFF+1);
         ByteBuffer ram = ByteBuffer.allocate(32*1024);
         NoMBC memory = new NoMBC(rom, ram);
         memory.setGPU(core.getGPU());
         core.setMemoryController(memory);
 
-        for (int i = GPU.ADDR_VRAM_START; i < GPU.ADDR_VRAM_END; i++) {
-            memory.write(i, dump[i]);
-        }
-
-        for (int i = GPU.ADDR_OAM_START; i < GPU.ADDR_OAM_END; i++) {
-            memory.write(i, dump[i]);
+        for (int i = 0; i < dump.length; i++) {
+            if(core.getGPU().isValidGPUAddress(i))
+                memory.write(i, dump[i]);
         }
 
         int index = 0;
-
         while(index < 154) {
             core.getGPU().step();
             try {

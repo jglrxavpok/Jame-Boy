@@ -15,6 +15,7 @@ public class SpriteBlock {
     private boolean priority;
     private boolean xFlip;
     private boolean yFlip;
+    private boolean enabledForRendering;
 
     public SpriteBlock(int startAddress, GPU owner) {
         this.startAddress = startAddress;
@@ -103,7 +104,7 @@ public class SpriteBlock {
         this.priority = priority;
     }
 
-    public boolean isFlipX() {
+    public boolean isFlippedOnX() {
         return xFlip;
     }
 
@@ -111,7 +112,7 @@ public class SpriteBlock {
         this.xFlip = xFlip;
     }
 
-    public boolean isFlipY() {
+    public boolean isFlippedOnY() {
         return yFlip;
     }
 
@@ -127,4 +128,23 @@ public class SpriteBlock {
         return xPosition-8;
     }
 
+    public boolean isVisible() {
+        return xPosition > 0 && yPosition > 0;
+    }
+
+    public void disable() {
+        enabledForRendering = false;
+    }
+
+    public void enable() {
+        enabledForRendering = true;
+    }
+
+    public boolean isEnabledForRendering() {
+        return enabledForRendering;
+    }
+
+    public int getStartAddress() {
+        return startAddress;
+    }
 }
