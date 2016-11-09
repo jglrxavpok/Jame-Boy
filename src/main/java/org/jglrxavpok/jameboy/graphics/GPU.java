@@ -35,8 +35,8 @@ public class GPU {
     private final ByteBuffer oam;
     private final List<SpriteBlock> spriteBlocks;
     private final int[] backgroundColors;
-    private final int[] pixels;
-    private int stepCount;
+    private int[] pixels;
+    private int clockCount;
     private int lineY;
     private int[] obj0Palette;
     private int[] obj1Palette;
@@ -142,12 +142,17 @@ public class GPU {
         } else if(index == ADDR_LCDC) {
             // TODO
             return 0;
+        } else if(index == 0xFF44) {
+            //System.out.println("read lineY!!");
+            return (byte) lineY;
         } else if(index >= ADDR_VRAM_START && index < ADDR_VRAM_END) {
             return videoRAM.get(index - ADDR_VRAM_START);
         } else if(index >= ADDR_OAM_START && index < ADDR_OAM_END) {
             return oam.get(index - ADDR_OAM_START);
         } else if(!isValidGPUAddress(index)) {
             throw new IllegalArgumentException("Invalid address for GPU: "+Integer.toHexString(index).toUpperCase());
+        } else {
+            System.out.println("Unknown addr: "+Integer.toHexString(index));
         }
         return 0;
     }
@@ -171,18 +176,22 @@ public class GPU {
         return (byte) result;
     }
 
-    public void step() {
-        sortSprites();
+    public void step(int cycles) {
+        clockCount+=cycles;
+        if(clockCount >= 456) {
+            clockCount = 0;
+            sortSprites();
 
-        if(lineY < 144) {
-            renderSingleLine();
-        }
-        lineY++;
+            if(lineY < 144) {
+                renderSingleLine();
+            }
+            lineY++;
 
-        if(lineY >= 154) {
-            lineY = 0;
+            if(lineY >= 154) {
+                lineY = 0;
+            }
+            // TODO: implement better GPU clock ?
         }
-        // TODO: implement GPU clock
     }
 
     private void sortSprites() {
@@ -332,5 +341,9 @@ public class GPU {
 
     public int[] getPixels() {
         return pixels;
+    }
+
+    public void setBuffer(int[] buffer) {
+        this.pixels = buffer;
     }
 }

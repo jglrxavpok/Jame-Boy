@@ -9,7 +9,7 @@ import java.awt.image.BufferStrategy;
 
 public class EmulatorThread extends Thread {
     //This value would probably be stored elsewhere.
-    final double GAME_HERTZ = 60.0;
+    final double GAME_HERTZ = 4194304;
     //Calculate how many ns each frame should take for our target game hertz.
     final double TIME_BETWEEN_UPDATES = 1000000000 / GAME_HERTZ;
     //At the very most we will update the game this many times before a new render.
@@ -77,8 +77,8 @@ public class EmulatorThread extends Thread {
             frame++;
             if (thisSecond > lastSecondTime) {
                 fps = frame;
-                if (JameBoyApp.emulator.getMemory().getROMTitle() != null)
-                    JameBoyApp.mainFrame.setTitle("JameBoy - " + JameBoyApp.emulator.getMemory().getROMTitle() + " - " + fps + " fps");
+                if (JameBoyApp.emulator.getCore().getCurrentROM() != null)
+                    JameBoyApp.mainFrame.setTitle("JameBoy - " + JameBoyApp.emulator.getCore().getCurrentROM().getHeader().getTitle() + " - " + fps + " fps");
                 else
                     JameBoyApp.mainFrame.setTitle("JameBoy - " + fps + " fps");
                 frame = 0;
@@ -106,7 +106,7 @@ public class EmulatorThread extends Thread {
     }
 
     public void update() {
-        while (Mouse.next()) {
+       /* while (Mouse.next()) {
             int type = Mouse.getEventType();
             if (type == Mouse.RELEASED) {
                 int x = Mouse.getEventX();
@@ -115,14 +115,13 @@ public class EmulatorThread extends Thread {
                 if (button == MouseEvent.BUTTON1) {
                 }
             }
-        }
+        }*/
         if (JameBoyApp.emulator.hasRomLoaded())
             JameBoyApp.emulator.doCycle();
     }
 
     public void render(Graphics g, float interpolation) {
         if (JameBoyApp.emulator.hasRomLoaded()) {
-            JameBoyApp.emulator.getGPU().render(JameBoyApp.emulator, screen, g, interpolation);
             g.drawImage(screen.image, JameBoyApp.mainFrame.getInsets().left, JameBoyApp.mainFrame.getInsets().top, JameBoyApp.mainFrame.getWidth(), JameBoyApp.mainFrame.getHeight(), null);
         } else {
             g.setColor(Color.BLACK);

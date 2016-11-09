@@ -21,9 +21,11 @@ public class JameBoy {
     }
 
     public void loadROM(GameROM rom) {
-        currentROM = rom;
         memoryController = MemoryControllers.create(rom);
         cpu.setMemory(memoryController);
+        memoryController.setGPU(gpu);
+        boot();
+        currentROM = rom;
     }
 
     public void boot() {
@@ -43,7 +45,8 @@ public class JameBoy {
     }
 
     public void cycle() {
-        cpu.doCycle();
+        int cycles = cpu.doCycle();
+        gpu.step(cycles);
     }
 
     public GPU getGPU() {

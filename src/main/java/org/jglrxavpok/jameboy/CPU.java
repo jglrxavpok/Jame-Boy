@@ -27,10 +27,6 @@ public class CPU {
     private boolean disableInterruptsNextInstruction;
     private boolean enableInterruptsNextInstruction;
 
-    public void setEmulator(JameBoyApp emu) {
-        this.emulator = emu;
-    }
-
     public void setMemory(MemoryController memory) {
         this.memory = memory;
     }
@@ -48,7 +44,9 @@ public class CPU {
     }
 
     private byte nextByte() {
-        return this.memory.read(PC++);
+        byte value = this.memory.read(PC);
+        PC++;
+        return value;
     }
 
     public void push16Bit(int val) {
@@ -92,6 +90,7 @@ public class CPU {
             disabledInterrupts = false;
         }
         opcode = opcode & 0xFF;
+        //System.out.println("opcode: "+Integer.toHexString(opcode));
         switch (opcode) {
             case 0x00: {
                 op_nop();
@@ -1232,7 +1231,7 @@ public class CPU {
     }
 
     private void op_LDH_A_TO() {
-        memory.write(nextByte() & 0xFF, A);
+        memory.write((nextByte() & 0xFF) | ((nextByte()<<4) & 0xFF), A);
         clockCycles = 16;
     }
 
@@ -2069,7 +2068,7 @@ public class CPU {
         byte offset = nextByte();
         if (C) {
             relativeJump(offset);
-            PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
+          //  PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
         }
     }
 
@@ -2116,7 +2115,7 @@ public class CPU {
         byte offset = nextByte();
         if (!C) {
             relativeJump(offset);
-            PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
+            //PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
         }
     }
 
@@ -2162,7 +2161,7 @@ public class CPU {
         byte offset = nextByte();
         if (Z) {
             relativeJump(offset);
-            PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
+          //  PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
         }
     }
 
@@ -2213,10 +2212,10 @@ public class CPU {
 
     private void op_JR_NZ() {
         clockCycles = 8;
-        byte offset = nextByte();
+        int offset = nextByte() & 0xFF;
         if (!Z) {
+      //      PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
             relativeJump(offset);
-            PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
         }
     }
 
@@ -2259,7 +2258,7 @@ public class CPU {
     private void op_JR() {
         clockCycles = 8;
         relativeJump(nextByte());
-        PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
+    //    PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
     }
 
     private void op_RLA() {
@@ -2655,7 +2654,17 @@ public class CPU {
     }
 
     public void relativeJump(int d) {
-        PC += d;
+        //PC += d;
+        PC = signedAdd(PC, d);
+    }
+
+    private int signedAdd(int a, int b) {
+        byte bSigned = (byte) (b & 0xFF);
+        if(bSigned >= 0) {
+            return a + ((bSigned)&0xFF);
+        } else {
+            return a - ((-bSigned)&0xFF);
+        }
     }
 
     private final String[] cbRegisterList = {"B", "C", "D", "E", "H", "L", "(HL)", "A"};

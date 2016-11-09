@@ -678,7 +678,7 @@ public class TestCPU {
         assertTrue(cpu.isHalted());
 
         // STOP
-        controller.setRaw(new byte[] { 0x10, 0x00 });
+        controller.setRaw(new byte[] { 0x10, 0x00,0,0,0,0,0,0,0,0,0,0,0,0,0,0 });
         cpu.hardReset();
         cpu.hardGoto(0);
         cycles = cpu.doCycle();
@@ -1682,7 +1682,7 @@ public class TestCPU {
         assertEquals(cpu.A, memory[1]);
 
         memory = new byte[] {
-                (byte) 0xEA, 0x1 // ld (nn),A
+                (byte) 0xEA, 0x1, 0 // ld (nn),A
         };
         testCyclesWithRandomFillAtStart(memory, 16);
         assertEquals(cpu.A, memory[1]);

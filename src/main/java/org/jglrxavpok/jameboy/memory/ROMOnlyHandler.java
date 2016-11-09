@@ -1,5 +1,7 @@
 package org.jglrxavpok.jameboy.memory;
 
+import org.jglrxavpok.jameboy.graphics.GPU;
+
 @Deprecated
 public class ROMOnlyHandler implements MemoryController {
 
@@ -26,6 +28,11 @@ public class ROMOnlyHandler implements MemoryController {
             // Invalid ram place
             return 0;
         }
+    }
+
+    @Override
+    public void setGPU(GPU gpu) {
+        // nop
     }
 
 }

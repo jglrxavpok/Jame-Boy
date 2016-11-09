@@ -4,10 +4,12 @@ import org.jglrxavpok.jameboy.graphics.old.OldGPU;
 import org.jglrxavpok.jameboy.graphics.old.Screen;
 import org.jglrxavpok.jameboy.input.Keyboard;
 import org.jglrxavpok.jameboy.input.Mouse;
+import org.jglrxavpok.jameboy.memory.GameROM;
 
 import javax.swing.*;
 import java.awt.*;
 import java.io.*;
+import java.nio.ByteBuffer;
 
 public class JameBoyApp {
 
@@ -17,16 +19,10 @@ public class JameBoyApp {
     public static Screen screen;
     public static EmulatorThread emulatorThread;
     private static JFileChooser chooser;
-    private GBMemory memory;
-    private boolean romLoaded;
-    private CPU cpu;
-    private OldGPU oldGpu;
+    private final JameBoy core;
 
     public JameBoyApp() {
-        memory = new GBMemory();
-        cpu = new CPU();
-        cpu.setEmulator(this);
-        oldGpu = new OldGPU();
+        core = new JameBoy();
     }
 
     public static void main(String[] args) {
@@ -40,10 +36,12 @@ public class JameBoyApp {
     }
 
     private static void loadEmulator() {
+        emulator = new JameBoyApp();
         mainFrame = new JFrame();
         scale = 6;
         mainFrame.setSize(160 * scale, 144 * scale);
         screen = new Screen(160, 144);
+        emulator.getCore().getGPU().setBuffer(screen.pixels);
         mainFrame.setLocationRelativeTo(null);
         Mouse.init(mainFrame);
         Keyboard.init(mainFrame);
@@ -57,8 +55,9 @@ public class JameBoyApp {
             if (f != null) {
                 try {
                     FileInputStream in = new FileInputStream(f);
-                    byte[] rom = read(in);
-                    emulator.load(rom);
+                    byte[] rawRom = read(in);
+                    GameROM rom = new GameROM(ByteBuffer.wrap(rawRom));
+                    emulator.core.loadROM(rom);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -68,7 +67,6 @@ public class JameBoyApp {
         bar.add(fileMenu);
         mainFrame.setMenuBar(bar);
         mainFrame.setVisible(true);
-        emulator = new JameBoyApp();
         emulatorThread = new EmulatorThread();
         emulatorThread.start();
     }
@@ -85,31 +83,17 @@ public class JameBoyApp {
         return baos.toByteArray();
     }
 
-    public GBMemory getMemory() {
-        return memory;
-    }
-
-    public CPU getCPU() {
-        return cpu;
-    }
-
-    public OldGPU getGPU() {
-        return oldGpu;
-    }
-
-    protected void load(byte[] rom) {
-        romLoaded = false;
-        memory.loadROM(rom);
-        romLoaded = true;
-    }
-
     public boolean hasRomLoaded() {
-        return romLoaded;
+        return core.getCurrentROM() != null;
     }
 
     public void doCycle() {
-        cpu.doCycle();
+        if(hasRomLoaded())
+            core.cycle();
     }
 
 
+    public JameBoy getCore() {
+        return core;
+    }
 }

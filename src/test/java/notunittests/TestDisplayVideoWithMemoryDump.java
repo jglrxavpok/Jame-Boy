@@ -29,13 +29,8 @@ public class TestDisplayVideoWithMemoryDump {
         }
 
         int index = 0;
-        while(index < 154) {
+        while(index < 154*456) {
             core.getGPU().step();
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
             index++;
         }
 
