@@ -44,12 +44,14 @@ public class GPU {
     private int currentSpriteHeight;
     private boolean shouldRenderSprites;
     private boolean shouldRenderBackground;
+    private boolean shouldRenderWindow;
     private int windowX;
     private int windowY;
     private int scrollX;
     private int scrollY;
     private int backgroundTileMapAddress;
-    private int backgroundTileDataAddress;
+    private int tileDataAddress;
+    private int windowTileMapAddress;
 
     public GPU() {
         videoRAM = ByteBuffer.allocate(8*1024);
@@ -80,10 +82,6 @@ public class GPU {
         currentSpriteHeight = 8;
 
         write(ADDR_LCDC, (byte) 0x91);
-
-        // TODO: Remove, only debug for now
-        shouldRenderSprites = true;
-        shouldRenderBackground = true;
     }
 
     public boolean isValidGPUAddress(int address) {
@@ -106,8 +104,14 @@ public class GPU {
         } else if(index == ADDR_LCDC) {
             // TODO
             currentSpriteHeight = BitUtils.getBit(value, 2) ? 16 : 8;
+            tileDataAddress = BitUtils.getBit(value, 4) ? 0x8000 : 0x8800;
             backgroundTileMapAddress = BitUtils.getBit(value, 3) ? 0x9C00 : 0x9800;
-            backgroundTileDataAddress = BitUtils.getBit(value, 4) ? 0x8000 : 0x8800;
+
+            windowTileMapAddress = BitUtils.getBit(value, 6) ? 0x9C00 : 0x9800;
+
+            shouldRenderWindow = BitUtils.getBit(value, 5);
+            shouldRenderSprites = BitUtils.getBit(value, 1);
+            shouldRenderBackground = BitUtils.getBit(value, 0);
         } else if(index == ADDR_SCROLL_X) {
             scrollX = value & 0xFF;
         } else if(index == ADDR_SCROLL_Y) {
@@ -204,6 +208,46 @@ public class GPU {
         if(shouldRenderSprites) {
             renderSpriteLine();
         }
+
+        if(shouldRenderWindow) {
+            renderWindowLine();
+        }
+    }
+
+    private void renderWindowLine() {
+        for (int x = 0; x < WIDTH; x++) {
+            int tileX = x+windowX-7;
+            int tileY = lineY-windowY;
+
+            if(tileY < 0)
+                continue;
+
+            int tileColumn = tileX / 8;
+            int tileRow = tileY / 8;
+
+            int localX = (tileX % 8);
+            int localY = (tileY % 8);
+
+            int color = getWindowColor(tileColumn, tileRow, localX, localY);
+
+            pixels[x+lineY*WIDTH] = color;
+        }
+    }
+
+    private int getWindowColor(int column, int row, int x, int y) {
+        byte patternNumberByte = read(column+row*(32) + windowTileMapAddress);
+        int patternNumber;
+        patternNumber = patternNumberByte;
+        if(tileDataAddress == 0x8800) {
+            patternNumber -= 128;
+        }
+        int startAddress = patternNumber*16 + tileDataAddress + 0x1000; // TODO: why + 0x1000
+        int byteIndex = y*2;
+        x = 7 - x;
+        int low = read(startAddress+byteIndex) & 0xFF;
+        int high = read(startAddress+byteIndex+1) & 0xFF;
+        int colorIndex = ((low&0xFF) & (1 << (x))) >> (x) | (((high&0xFF) & (1 << (x))) >> (x)) <<1;
+        return backgroundPalette[colorIndex];
     }
 
     private void renderBackgroundLine() {
@@ -226,16 +270,15 @@ public class GPU {
     private int getBackgroundColor(int column, int row, int x, int y) {
         byte patternNumberByte = read(column+row*32 + backgroundTileMapAddress);
         int patternNumber;
-        if(backgroundTileDataAddress == 0x8000) {
-            patternNumber = patternNumberByte & 0xFF;
-        } else {
-            patternNumber = (int)patternNumberByte;
+        patternNumber = patternNumberByte;
+        if(tileDataAddress == 0x8800) {
+            patternNumber -= 128;
         }
-        int startAddress = patternNumber*16;
+        int startAddress = patternNumber*16 + tileDataAddress + 0x1000; // TODO: why + 0x1000
         int byteIndex = y*2;
         x = 7 - x;
-        int low = read(backgroundTileDataAddress+startAddress+byteIndex) & 0xFF;
-        int high = read(backgroundTileDataAddress+startAddress+byteIndex+1) & 0xFF;
+        int low = read(startAddress+byteIndex) & 0xFF;
+        int high = read(startAddress+byteIndex+1) & 0xFF;
         int colorIndex = ((low&0xFF) & (1 << (x))) >> (x) | (((high&0xFF) & (1 << (x))) >> (x)) <<1;
         return backgroundPalette[colorIndex];
     }
@@ -249,11 +292,12 @@ public class GPU {
                 sprite.loadFromMemory();
                 if(!sprite.isEnabledForRendering() || !sprite.isVisible())
                     continue;
-                int y = lineY;
-                if(sprite.getScreenPositionX() <= screenX && sprite.getScreenPositionX()+spriteWidth-1 >= screenX) { // the vertical line intersects the sprite
+                int y = lineY + scrollY;
+                int x = screenX + scrollX;
+                if(sprite.getScreenPositionX() <= x && sprite.getScreenPositionX()+spriteWidth-1 >= x) { // the vertical line intersects the sprite
                     if(sprite.getScreenPositionY() <= y && sprite.getScreenPositionY() +spriteHeight-1 >= y) { // the scan line intersects the sprite
-                        int localSpriteX = screenX -sprite.getScreenPositionX();
-                        int localSpriteY = y-sprite.getScreenPositionY();
+                        int localSpriteX = x - sprite.getScreenPositionX();
+                        int localSpriteY = y - sprite.getScreenPositionY();
                         if(sprite.isFlippedOnX()) {
                             localSpriteX = spriteWidth-1-localSpriteX;
                         }

@@ -16,7 +16,7 @@ public class TestDisplayVideoWithMemoryDump {
 
     public static void main(String[] args) throws IOException {
         JameBoy core = new JameBoy();
-        byte[] dump = readRaw("memdumps/LinksAwakening.DMP");
+        byte[] dump = readRaw("memdumps/PokemonYellowBattle.DMP");
         ByteBuffer rom = ByteBuffer.allocate(0xFFFF+1);
         ByteBuffer ram = ByteBuffer.allocate(32*1024);
         NoMBC memory = new NoMBC(rom, ram);
