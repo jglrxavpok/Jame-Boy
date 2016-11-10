@@ -35,4 +35,19 @@ public class ROMOnlyHandler implements MemoryController {
         // nop
     }
 
+    @Override
+    public void interrupt(Interrupts interrupt) {
+
+    }
+
+    @Override
+    public boolean isInterruptOn(Interrupts interrupt) {
+        return false;
+    }
+
+    @Override
+    public void disableInterrupt(Interrupts interrupt) {
+
+    }
+
 }

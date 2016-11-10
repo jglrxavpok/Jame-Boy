@@ -1,5 +1,7 @@
 package org.jglrxavpok.jameboy.graphics;
 
+import org.jglrxavpok.jameboy.memory.Interrupts;
+import org.jglrxavpok.jameboy.memory.MemoryController;
 import org.jglrxavpok.jameboy.utils.BitUtils;
 
 import java.nio.ByteBuffer;
@@ -31,6 +33,11 @@ public class GPU {
     public static final int ADDR_LCDC = 0xFF40;
     public static final int ADDR_SCROLL_X = 0xFF43;
     public static final int ADDR_SCROLL_Y = 0xFF42;
+    public static final int ADDR_OAM_DMA_TRANSFER = 0xFF46;
+    public static final int ADDR_STAT = 0xFF41;
+    public static final int ADDR_LY = 0xFF44;
+    public static final int ADDR_LYC = 0xFF45;
+    public static final byte VBLANK_MODE = 0x1;
     private final ByteBuffer videoRAM;
     private final ByteBuffer oam;
     private final List<SpriteBlock> spriteBlocks;
@@ -52,6 +59,15 @@ public class GPU {
     private int backgroundTileMapAddress;
     private int tileDataAddress;
     private int windowTileMapAddress;
+    private byte modeFlag;
+    private boolean coincidenceInterrupt;
+    private boolean hBlankInterrupt;
+    private boolean vBlankInterrupt;
+    private boolean interruptOAM;
+    private boolean coincidenceFlag;
+    private boolean enableDisplay;
+    private MemoryController memory;
+    private byte lyc;
 
     public GPU() {
         videoRAM = ByteBuffer.allocate(8*1024);
@@ -102,7 +118,8 @@ public class GPU {
         } else if(index == ADDR_WY) {
             windowY = value & 0xFF;
         } else if(index == ADDR_LCDC) {
-            // TODO
+            enableDisplay = BitUtils.getBit(value, 7);
+
             currentSpriteHeight = BitUtils.getBit(value, 2) ? 16 : 8;
             tileDataAddress = BitUtils.getBit(value, 4) ? 0x8000 : 0x8800;
             backgroundTileMapAddress = BitUtils.getBit(value, 3) ? 0x9C00 : 0x9800;
@@ -112,8 +129,17 @@ public class GPU {
             shouldRenderWindow = BitUtils.getBit(value, 5);
             shouldRenderSprites = BitUtils.getBit(value, 1);
             shouldRenderBackground = BitUtils.getBit(value, 0);
+
+        } else if(index == ADDR_LYC) {
+            lyc = value;
         } else if(index == ADDR_SCROLL_X) {
             scrollX = value & 0xFF;
+        } else if(index == ADDR_STAT) {
+            coincidenceFlag = BitUtils.getBit(value, 6);
+            interruptOAM = BitUtils.getBit(value, 5);
+            vBlankInterrupt = BitUtils.getBit(value, 4);
+            hBlankInterrupt = BitUtils.getBit(value, 3);
+
         } else if(index == ADDR_SCROLL_Y) {
             scrollY = value & 0xFF;
         } else if(index >= ADDR_VRAM_START && index < ADDR_VRAM_END) {
@@ -140,10 +166,41 @@ public class GPU {
         } else if(index == ADDR_OBJ1PAL) {
             return convertPaletteToByte(obj1Palette);
         } else if(index == ADDR_LCDC) {
-            // TODO
-            return 0;
-        } else if(index == 0xFF44) {
-            //System.out.println("read lineY!!");
+            byte value = 0;
+            if(enableDisplay)
+                value |= 1<<7;
+            if(windowTileMapAddress == 0x9C00)
+                value |= 1<<6;
+            if(shouldRenderWindow)
+                value |= 1<<5;
+            if(tileDataAddress == 0x8000)
+                value |= 1<<4;
+            if(backgroundTileMapAddress == 0x9C00)
+                value |= 1<<3;
+            if(currentSpriteHeight == 16)
+                value |= 1<<2;
+            if(shouldRenderSprites)
+                value |= 1<<1;
+            if(shouldRenderBackground)
+                value |= 0x1;
+            return value;
+        } else if(index == ADDR_LYC) {
+            return lyc;
+        } else if(index == ADDR_STAT) {
+            byte value = 0;
+            if(coincidenceInterrupt)
+                value |= 1<<6;
+            if(interruptOAM)
+                value |= 1<<5;
+            if(vBlankInterrupt)
+                value |= 1<<4;
+            if(hBlankInterrupt)
+                value |= 1<<3;
+            if(coincidenceFlag)
+                value |= 1<<2;
+            value |= modeFlag;
+            return value;
+        } else if(index == ADDR_LY) {
             return (byte) lineY;
         } else if(index >= ADDR_VRAM_START && index < ADDR_VRAM_END) {
             return videoRAM.get(index - ADDR_VRAM_START);
@@ -178,12 +235,25 @@ public class GPU {
 
     public void step(int cycles) {
         clockCount+=cycles;
+
         if(clockCount >= 456) {
             clockCount = 0;
             sortSprites();
 
+            if(coincidenceInterrupt && lineY == (lyc & 0xFF)) {
+                memory.interrupt(Interrupts.LDC_COINCIDENCE);
+            }
+
             if(lineY < 144) {
-                renderSingleLine();
+                if(enableDisplay)
+                    renderSingleLine();
+            } else {
+                if(lineY == 144) {
+                    if(vBlankInterrupt) {
+                        memory.interrupt(Interrupts.V_BLANK);
+                    }
+                }
+                modeFlag = VBLANK_MODE;
             }
             lineY++;
 
@@ -345,5 +415,9 @@ public class GPU {
 
     public void setBuffer(int[] buffer) {
         this.pixels = buffer;
+    }
+
+    public void linkToMemory(MemoryController memory) {
+        this.memory = memory;
     }
 }

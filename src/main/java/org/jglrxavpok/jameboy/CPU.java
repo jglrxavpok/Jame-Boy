@@ -1,6 +1,8 @@
 package org.jglrxavpok.jameboy;
 
+import org.jglrxavpok.jameboy.memory.Interrupts;
 import org.jglrxavpok.jameboy.memory.MemoryController;
+import org.jglrxavpok.jameboy.utils.BitUtils;
 
 /**
  * Emulates a LR35902 CPU (used in Nintendo's Game Boy console)
@@ -14,7 +16,6 @@ public class CPU {
     private int clockCycles = 0;
     private JameBoyApp emulator;
     public byte A;
-    public byte F;
     public boolean Z;
     public boolean N;
     public boolean H;
@@ -26,6 +27,7 @@ public class CPU {
     private boolean disabledInterrupts;
     private boolean disableInterruptsNextInstruction;
     private boolean enableInterruptsNextInstruction;
+    private boolean masterInterrupt;
 
     public void setMemory(MemoryController memory) {
         this.memory = memory;
@@ -51,14 +53,14 @@ public class CPU {
 
     public void push16Bit(int val) {
         SP -= 2;
-        write16Bits(SP, val);
+        write16Bits(SP, val & 0xFFFF);
     }
 
     public int popPart() {
-        int val = (this.memory.read(SP))
-                | ((this.memory.read(SP + 1)) << 8);
+        int val = (this.memory.read(SP) & 0xFF)
+                | ((this.memory.read(SP + 1) & 0xFF) << 8);
         SP += 2;
-        return val;
+        return val & 0xFFFF;
     }
 
     public void write16Bits(int pos, int val) {
@@ -72,12 +74,12 @@ public class CPU {
 
     public void hardReset() {
         A = 0;
-        F = 0;
         Z = N = C = H = false;
         BC = DE = HL = 0;
         SP = 0;
         PC = 0x100;
         halted = false;
+        masterInterrupt = true;
     }
 
     private int executeOP(int opcode) {
@@ -90,7 +92,7 @@ public class CPU {
             disabledInterrupts = false;
         }
         opcode = opcode & 0xFF;
-        //System.out.println("opcode: "+Integer.toHexString(opcode));
+        //System.out.println("opcode: "+Integer.toHexString(opcode)+", ("+Integer.toHexString(PC-1)+")");
         switch (opcode) {
             case 0x00: {
                 op_nop();
@@ -1082,7 +1084,30 @@ public class CPU {
                 throw new IllegalArgumentException("Unknown opcode: " + Integer.toHexString(opcode));
             }
         }
+
+        if(masterInterrupt) {
+            if(memory.isInterruptOn(Interrupts.V_BLANK)) {
+                memory.disableInterrupt(Interrupts.V_BLANK);
+                handleVBlankInterrupt();
+            } else if(memory.isInterruptOn(Interrupts.LDC_COINCIDENCE)) {
+                memory.disableInterrupt(Interrupts.LDC_COINCIDENCE);
+                handleLCDCoincidenceInterrupt();
+            }
+        }
+
         return clockCycles;
+    }
+
+    private void handleLCDCoincidenceInterrupt() {
+        masterInterrupt = false;
+        rst(0x48); // jump to interrupt handler at 0x0048
+        System.out.println("lcd interrupt!");
+    }
+
+    private void handleVBlankInterrupt() {
+        masterInterrupt = false;
+        rst(0x40); // jump to interrupt handler at 0x0040
+        System.out.println("v blank interrupt!");
     }
 
     private void op_RETI() {
@@ -1094,9 +1119,8 @@ public class CPU {
 
     private void op_RET_C() {
         clockCycles = 8;
-        int address = nextPart();
         if (C) {
-            push16Bit(PC-3);
+            int address = popPart();
             PC = address;
         }
     }
@@ -1104,7 +1128,7 @@ public class CPU {
     private void op_CALL_C() {
         int addr = nextPart();
         if(C) {
-            push16Bit(PC-3);
+            push16Bit(PC);
             PC = addr;
         }
         clockCycles = 12;
@@ -1124,11 +1148,13 @@ public class CPU {
 
     private void op_EI() {
         enableInterruptsNextInstruction = true;
+        masterInterrupt = true;
         clockCycles = 4;
     }
 
     private void op_DI() {
         disableInterruptsNextInstruction = true;
+        masterInterrupt = false;
         clockCycles = 4;
     }
 
@@ -1176,7 +1202,7 @@ public class CPU {
     private void op_POP_AF() {
         int AF = popPart();
         A = getUpper(AF);
-        F = getLower(AF);
+        setFlags(getLower(AF));
         clockCycles = 12;
     }
 
@@ -1191,8 +1217,21 @@ public class CPU {
     }
 
     private void op_PUSH_AF() {
-        push16Bit(((A & 0xFF) << 8 | (F & 0xFF)) & 0xFFFF);
+        push16Bit(((A & 0xFF) << 8 | (getFlags() & 0xFF)) & 0xFFFF);
         clockCycles = 16;
+    }
+
+    public byte getFlags() {
+        int value = 0;
+        if(Z)
+            value |= 1 << 7;
+        if(N)
+            value |= 1 << 5;
+        if(H)
+            value |= 1 << 5;
+        if(C)
+            value |= 1 << 4;
+        return (byte)value;
     }
 
     private void op_LD_HL_SP_OFFSET() {
@@ -1236,7 +1275,7 @@ public class CPU {
     }
 
     private void op_LDH_A() {
-        A = memory.read(nextByte() & 0xFF);
+        A = memory.read((nextByte() & 0xFF) | (nextByte() & 0xFF) << 8);
         clockCycles = 16;
     }
 
@@ -1244,7 +1283,7 @@ public class CPU {
         clockCycles = 12;
         int address = nextPart();
         if (!Z) {
-            push16Bit(PC-3);
+            push16Bit(PC);
             PC = address;
         }
     }
@@ -1269,9 +1308,8 @@ public class CPU {
 
     private void op_RET_NC() {
         clockCycles = 8;
-        int address = nextPart();
         if (!C) {
-            push16Bit(PC-3);
+            int address = popPart();
             PC = address;
         }
     }
@@ -1289,15 +1327,16 @@ public class CPU {
     private void op_CALL() {
         clockCycles = 12;
         int address = nextPart();
-        push16Bit(PC-3); // accounts for the fact that PC increased twice before start of instruction
+        push16Bit(PC);
         PC = address;
+        System.out.println("CALL "+Integer.toHexString(address&0xFFFF));
     }
 
     private void op_CALL_Z() {
         clockCycles = 12;
         int address = nextPart();
         if (Z) {
-            push16Bit(PC-3);
+            push16Bit(PC);
             PC = address;
         }
     }
@@ -1328,8 +1367,8 @@ public class CPU {
 
     private void op_RET_Z() {
         clockCycles = 8;
-        int addr = popPart();
         if (Z) {
+            int addr = popPart();
             PC = addr;
         }
     }
@@ -1353,7 +1392,7 @@ public class CPU {
         clockCycles = 12;
         int address = nextPart();
         if (!Z) {
-            push16Bit(PC-3);
+            push16Bit(PC);
             PC = address;
         }
     }
@@ -1379,8 +1418,8 @@ public class CPU {
 
     private void op_RET_NZ() {
         clockCycles = 8;
-        int addr = popPart();
         if (!Z) {
+            int addr = popPart();
             PC = addr;
         }
     }
@@ -2404,7 +2443,7 @@ public class CPU {
         } else if (registry.equals("DE")) {
             DE = registryValue;
         } else if (registry.equals("F")) {
-            F = (byte) (registryValue & 0xFF);
+            setFlags((byte) (registryValue & 0xFF));
         } else if (registry.equals("HL")) {
             HL = registryValue;
         } else if (registry.equals("SP")) {
@@ -2432,7 +2471,7 @@ public class CPU {
         } else if (registry.equals("A")) {
             return A;
         } else if (registry.equals("F")) {
-            return F;
+            return getFlags();
         } else if (registry.equals("DE")) {
             return DE;
         } else if (registry.equals("HL")) {
@@ -2482,7 +2521,7 @@ public class CPU {
     }
 
     public void rst(int addr) {
-        push16Bit(PC-1);
+        push16Bit(PC);
         PC = addr;
     }
 
@@ -3095,6 +3134,7 @@ public class CPU {
         DE = 0xD8;
         HL = 0x14D;
         SP = 0xFFFE;
+        setFlags(0xB0);
         memory.write(0xFF05, (byte)0x00); // TIMA
         memory.write(0xFF06, (byte)0x00); // TMA
         memory.write(0xFF07, (byte)0x00); // TAC
@@ -3126,6 +3166,13 @@ public class CPU {
         memory.write(0xFF4A, (byte)0x00); // WY
         memory.write(0xFF4B, (byte)0x00); // WX
         memory.write(0xFFFF, (byte)0x00); // IE
+    }
+
+    public void setFlags(int flags) {
+        Z = BitUtils.getBit(flags, 7);
+        N = BitUtils.getBit(flags, 6);
+        H = BitUtils.getBit(flags, 5);
+        C = BitUtils.getBit(flags, 4);
     }
 
     public boolean areInterruptsDisabled() {

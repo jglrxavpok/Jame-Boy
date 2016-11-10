@@ -22,6 +22,7 @@ public class TestDisplayVideoWithMemoryDump {
         NoMBC memory = new NoMBC(rom, ram);
         memory.setGPU(core.getGPU());
         core.setMemoryController(memory);
+        core.getGPU().linkToMemory(memory);
 
         for (int i = 0; i < dump.length; i++) {
             if(core.getGPU().isValidGPUAddress(i))
@@ -29,8 +30,8 @@ public class TestDisplayVideoWithMemoryDump {
         }
 
         int index = 0;
-        while(index < 154*456) {
-            core.getGPU().step();
+        while(index < 154) {
+            core.getGPU().step(456);
             index++;
         }
 

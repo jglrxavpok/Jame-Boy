@@ -9,14 +9,14 @@ import java.awt.image.BufferStrategy;
 
 public class EmulatorThread extends Thread {
     //This value would probably be stored elsewhere.
-    final double GAME_HERTZ = 4194304;
+    final double GAME_HERTZ = Double.MAX_VALUE;
     //Calculate how many ns each frame should take for our target game hertz.
     final double TIME_BETWEEN_UPDATES = 1000000000 / GAME_HERTZ;
     //At the very most we will update the game this many times before a new render.
     //If you're worried about visual hitches more than perfect timing, set this to 1.
     final int MAX_UPDATES_BEFORE_RENDER = 5;
     //If we are able to get as high as this FPS, don't render again.
-    final double TARGET_FPS = 25;
+    final double TARGET_FPS = 20;
     final double TARGET_TIME_BETWEEN_RENDERS = 1000000000 / TARGET_FPS;
     //We will need the last update time.
     double lastUpdateTime = System.nanoTime();
@@ -95,10 +95,10 @@ public class EmulatorThread extends Thread {
                 //This stops the app from consuming all your CPU. It makes this slightly less accurate, but is worth it.
                 //You can remove this line and it will still work (better), your CPU just climbs on certain OSes.
                 //FYI on some OS's this can cause pretty bad stuttering. Scroll down and have a look at different peoples' solutions to this.
-                try {
+              /*  try {
                     Thread.sleep(1);
                 } catch (Exception e) {
-                }
+                }*/
 
                 now = System.nanoTime();
             }

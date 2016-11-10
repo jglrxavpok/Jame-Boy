@@ -9,4 +9,10 @@ public interface MemoryController {
     byte read(int index);
 
     void setGPU(GPU gpu);
+
+    void interrupt(Interrupts interrupt);
+
+    boolean isInterruptOn(Interrupts interrupt);
+
+    void disableInterrupt(Interrupts interrupt);
 }

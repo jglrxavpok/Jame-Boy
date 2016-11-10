@@ -225,7 +225,7 @@ public class TestCPU {
         byte[] memory = new byte[] {(byte) 0xCB, cbCode, (byte) (1<<bitIndex)};
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
         if(valueHL == -1) {
             cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
@@ -248,7 +248,7 @@ public class TestCPU {
         byte[] memory = new byte[] {(byte) 0xCB, cbCode, (byte) (1<<bitIndex)};
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
         if(valueHL == -1) {
             cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
@@ -271,7 +271,7 @@ public class TestCPU {
         byte[] memory = new byte[] {(byte) 0xCB, cbCode, (byte) (1<<bitIndex)};
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
         if(valueHL == -1) {
             cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
@@ -326,7 +326,7 @@ public class TestCPU {
         byte[] memory = new byte[] {(byte) 0xCB, cbCode, randByte() };
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
         if(valueHL == -1) {
             cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
@@ -356,7 +356,7 @@ public class TestCPU {
         byte[] memory = new byte[] {(byte) 0xCB, cbCode, randByte() };
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
         if(valueHL == -1) {
             cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
@@ -385,7 +385,7 @@ public class TestCPU {
         byte[] memory = new byte[] {(byte) 0xCB, cbCode, randByte() };
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
         if(valueHL == -1) {
             cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
@@ -510,7 +510,7 @@ public class TestCPU {
         byte[] memory = new byte[] {(byte) 0xCB, cbCode, randByte() };
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
         if(valueHL == -1) {
             cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
@@ -536,7 +536,7 @@ public class TestCPU {
         byte[] memory = new byte[] {(byte) 0xCB, cbCode, randByte() };
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
         if(valueHL == -1) {
             cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
@@ -563,7 +563,7 @@ public class TestCPU {
         byte[] memory = new byte[] {(byte) 0xCB, cbCode, randByte() };
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
         if(valueHL == -1) {
             cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
@@ -589,7 +589,7 @@ public class TestCPU {
         byte[] memory = new byte[] {(byte) 0xCB, cbCode, randByte() };
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
         if(valueHL == -1) {
             cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
@@ -718,7 +718,7 @@ public class TestCPU {
         byte[] memory = new byte[] {(byte) 0xCB, cbCode, randByte() };
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
         if(valueHL == -1) {
             cpu.HL = ((randByte()&0xFF) << 8 | randByte()&0xFF) & 0xFFFF;
@@ -761,7 +761,7 @@ public class TestCPU {
         byte[] memory = new byte[] {opcode};
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
         cpu.HL = (randByte()&0xFF) << 8 | randByte()&0xFF;
         cpu.DE = (randByte()&0xFF) << 8 | randByte()&0xFF;
@@ -779,7 +779,7 @@ public class TestCPU {
         byte[] memory = new byte[] {opcode};
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
         cpu.HL = (randByte()&0xFF) << 8 | randByte()&0xFF;
         cpu.DE = (randByte()&0xFF) << 8 | randByte()&0xFF;
@@ -798,7 +798,7 @@ public class TestCPU {
         byte[] memory = new byte[] {(byte) 0xE8, value };
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
         cpu.HL = (randByte()&0xFF) << 8 | randByte()&0xFF;
         cpu.DE = (randByte()&0xFF) << 8 | randByte()&0xFF;
@@ -816,7 +816,7 @@ public class TestCPU {
         byte[] memory = new byte[] { opcode };
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = (randByte()&0xFF) << 8 | randByte()&0xFF;
         cpu.HL = (randByte()&0xFF) << 8 | randByte()&0xFF;
         cpu.DE = (randByte()&0xFF) << 8 | randByte()&0xFF;
@@ -851,7 +851,7 @@ public class TestCPU {
         byte[] memory = new byte[] { opcode, randByte() };
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = randByte() << 8 | randByte();
         cpu.HL = randByte() << 8 | randByte();
         cpu.DE = randByte() << 8 | randByte();
@@ -886,7 +886,7 @@ public class TestCPU {
         byte[] memory = new byte[] { opcode, randByte() };
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = randByte() << 8 | randByte();
         cpu.HL = randByte() << 8 | randByte();
         cpu.DE = randByte() << 8 | randByte();
@@ -1118,7 +1118,7 @@ public class TestCPU {
         byte[] memory = new byte[] { opcode, randByte() };
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = randByte() << 8 | randByte();
         cpu.HL = randByte() << 8 | randByte();
         cpu.DE = randByte() << 8 | randByte();
@@ -1219,7 +1219,7 @@ public class TestCPU {
         cpu.hardGoto(0);
         controller.setRaw(memory);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = randByte() << 8 | randByte();
         cpu.HL = randByte() << 8 | randByte();
         cpu.DE = randByte() << 8 | randByte();
@@ -1757,7 +1757,7 @@ public class TestCPU {
     @Test
     public void ld16bit() {
         testCyclesWithRandomFillAtStart(new byte[] {
-             0x01, (byte) 0xFF, (byte) 0xFF // ld BC,nn
+                0x01, (byte) 0xFF, (byte) 0xFF // ld BC,nn
         }, 12);
         assertEquals(0xFFFF, cpu.BC & 0xFFFF);
 
@@ -1812,7 +1812,7 @@ public class TestCPU {
         testCyclesWithRandomFillAtStartAndSetRegister(memory, "SP", 4, 16);
         assertEquals(cpu.SP, 2);
         assertEquals(cpu.A & 0xFF, memory[3] & 0xFF);
-        assertEquals(cpu.F & 0xFF, memory[2] & 0xFF);
+        assertEquals(cpu.getFlags() & 0xFF, memory[2] & 0xFF);
 
         memory = new byte[] {
                 (byte) 0xC5, (byte) 0xF4 /*garbage*/, 0x0, 0x0// push BC
@@ -1844,7 +1844,7 @@ public class TestCPU {
         };
         testCyclesWithRandomFillAtStartAndSetRegister(memory, "SP", 2, 12);
         assertEquals(cpu.SP, 4);
-        assertEquals(memory[2] & 0xFF, cpu.F & 0xFF);
+        assertEquals(memory[2] & 0xFF, cpu.getFlags() & 0xFF);
         assertEquals(memory[3] & 0xFF, cpu.A & 0xFF);
 
         memory = new byte[] {
@@ -1887,7 +1887,7 @@ public class TestCPU {
         cpu.hardGoto(0);
         controller.setRaw(instruction);
         cpu.A = randByte();
-        cpu.F = randByte();
+        cpu.setFlags(randByte());
         cpu.BC = randByte() << 8 | randByte();
         cpu.HL = randByte() << 8 | randByte();
         cpu.DE = randByte() << 8 | randByte();

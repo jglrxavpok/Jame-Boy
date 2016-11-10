@@ -24,6 +24,11 @@ public class JameBoy {
         memoryController = MemoryControllers.create(rom);
         cpu.setMemory(memoryController);
         memoryController.setGPU(gpu);
+        gpu.linkToMemory(memoryController);
+        rom.getData().position(0);
+        for (int i = 0; i < rom.getData().limit(); i++) {
+            memoryController.write(i, rom.getData().get(i));
+        }
         boot();
         currentROM = rom;
     }
