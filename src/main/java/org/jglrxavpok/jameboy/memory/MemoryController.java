@@ -1,6 +1,7 @@
 package org.jglrxavpok.jameboy.memory;
 
 import org.jglrxavpok.jameboy.graphics.GPU;
+import org.jglrxavpok.jameboy.io.IOHandler;
 
 public interface MemoryController {
 
@@ -14,5 +15,7 @@ public interface MemoryController {
 
     boolean isInterruptOn(Interrupts interrupt);
 
-    void disableInterrupt(Interrupts interrupt);
+    void resetInterrupt(Interrupts interrupt);
+
+    void setIOHandler(IOHandler handler);
 }

@@ -1,15 +1,16 @@
 package org.jglrxavpok.jameboy;
 
 import org.jglrxavpok.jameboy.graphics.old.Screen;
-import org.jglrxavpok.jameboy.input.Mouse;
+import org.jglrxavpok.jameboy.input.Keyboard;
+import org.jglrxavpok.jameboy.io.IOHandler;
 
 import java.awt.*;
-import java.awt.event.MouseEvent;
+import java.awt.event.KeyEvent;
 import java.awt.image.BufferStrategy;
 
 public class EmulatorThread extends Thread {
     //This value would probably be stored elsewhere.
-    final double GAME_HERTZ = Double.MAX_VALUE;
+    final double GAME_HERTZ = 60;
     //Calculate how many ns each frame should take for our target game hertz.
     final double TIME_BETWEEN_UPDATES = 1000000000 / GAME_HERTZ;
     //At the very most we will update the game this many times before a new render.
@@ -116,13 +117,26 @@ public class EmulatorThread extends Thread {
                 }
             }
         }*/
-        if (JameBoyApp.emulator.hasRomLoaded())
-            JameBoyApp.emulator.doCycle();
+        IOHandler handler = JameBoyApp.emulator.getCore().getIOHandler();
+        handler.setLeftPressed(Keyboard.isKeyDown(KeyEvent.VK_LEFT));
+        handler.setUpPressed(Keyboard.isKeyDown(KeyEvent.VK_UP));
+        handler.setRightPressed(Keyboard.isKeyDown(KeyEvent.VK_RIGHT));
+        handler.setDownPressed(Keyboard.isKeyDown(KeyEvent.VK_DOWN));
+        handler.setBPressed(Keyboard.isKeyDown(KeyEvent.VK_A));
+        handler.setAPressed(Keyboard.isKeyDown(KeyEvent.VK_S));
+        handler.setStartPressed(Keyboard.isKeyDown(KeyEvent.VK_ENTER));
+        handler.setSelectPressed(Keyboard.isKeyDown(KeyEvent.VK_BACK_SPACE));
+
+        if (JameBoyApp.emulator.hasRomLoaded()) {
+            int count = (int) (4194304 / GAME_HERTZ);
+            JameBoyApp.emulator.doCycles(count);
+        }
     }
 
     public void render(Graphics g, float interpolation) {
         if (JameBoyApp.emulator.hasRomLoaded()) {
-            g.drawImage(screen.image, JameBoyApp.mainFrame.getInsets().left, JameBoyApp.mainFrame.getInsets().top, JameBoyApp.mainFrame.getWidth(), JameBoyApp.mainFrame.getHeight(), null);
+            g.drawImage(screen.image, JameBoyApp.mainFrame.getInsets().left, JameBoyApp.mainFrame.getInsets().top,
+                    JameBoyApp.mainFrame.getContentPane().getWidth(), JameBoyApp.mainFrame.getContentPane().getHeight(), null);
         } else {
             g.setColor(Color.BLACK);
             g.fillRect(0, 0, JameBoyApp.mainFrame.getWidth(), JameBoyApp.mainFrame.getHeight());

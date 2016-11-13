@@ -85,14 +85,15 @@ public class CPU {
     private int executeOP(int opcode) {
         if(disableInterruptsNextInstruction) {
             disableInterruptsNextInstruction = false;
-            disabledInterrupts = true;
+            masterInterrupt = false;
         }
         if(enableInterruptsNextInstruction) {
             enableInterruptsNextInstruction = false;
-            disabledInterrupts = false;
+            masterInterrupt = true;
         }
         opcode = opcode & 0xFF;
         //System.out.println("opcode: "+Integer.toHexString(opcode)+", ("+Integer.toHexString(PC-1)+")");
+        //System.out.println(Integer.toHexString(PC-1));
         switch (opcode) {
             case 0x00: {
                 op_nop();
@@ -1080,6 +1081,10 @@ public class CPU {
                 op_RETI();
                 break;
             }
+            case 0xDE: {
+                op_SBC_A();
+                break;
+            }
             default: {
                 throw new IllegalArgumentException("Unknown opcode: " + Integer.toHexString(opcode));
             }
@@ -1087,27 +1092,39 @@ public class CPU {
 
         if(masterInterrupt) {
             if(memory.isInterruptOn(Interrupts.V_BLANK)) {
-                memory.disableInterrupt(Interrupts.V_BLANK);
+                memory.resetInterrupt(Interrupts.V_BLANK);
                 handleVBlankInterrupt();
-            } else if(memory.isInterruptOn(Interrupts.LDC_COINCIDENCE)) {
-                memory.disableInterrupt(Interrupts.LDC_COINCIDENCE);
+            } else if(memory.isInterruptOn(Interrupts.LCD_COINCIDENCE)) {
+                memory.resetInterrupt(Interrupts.LCD_COINCIDENCE);
                 handleLCDCoincidenceInterrupt();
+            }
+        } else {
+            if(memory.isInterruptOn(Interrupts.V_BLANK)) {
+//                System.out.println("v blank int0000 "+Integer.toHexString(PC).toUpperCase());
             }
         }
 
         return clockCycles;
     }
 
+    private boolean debug_shouldPrintPC() {
+        return true;
+    }
+
+    private void op_SBC_A() {
+        clockCycles = 8;
+        sbc(nextByte());
+    }
+
     private void handleLCDCoincidenceInterrupt() {
         masterInterrupt = false;
         rst(0x48); // jump to interrupt handler at 0x0048
-        System.out.println("lcd interrupt!");
     }
 
     private void handleVBlankInterrupt() {
         masterInterrupt = false;
+        //System.out.println("v blank int");
         rst(0x40); // jump to interrupt handler at 0x0040
-        System.out.println("v blank interrupt!");
     }
 
     private void op_RETI() {
@@ -1148,13 +1165,17 @@ public class CPU {
 
     private void op_EI() {
         enableInterruptsNextInstruction = true;
-        masterInterrupt = true;
+        disableInterruptsNextInstruction = false;
+        //masterInterrupt = true;
+        //System.out.println("ei "+Integer.toHexString(PC-1).toUpperCase());
         clockCycles = 4;
     }
 
     private void op_DI() {
         disableInterruptsNextInstruction = true;
-        masterInterrupt = false;
+        enableInterruptsNextInstruction = false;
+        //masterInterrupt = false;
+        //System.out.println("di "+Integer.toHexString(PC-1).toUpperCase());
         clockCycles = 4;
     }
 
@@ -1170,7 +1191,7 @@ public class CPU {
     }
 
     private void op_CP_A() {
-        cp(nextByte() & 0xFF);
+        cp(nextByte());
         clockCycles = 8;
     }
 
@@ -1255,22 +1276,23 @@ public class CPU {
     }
 
     private void op_LD_OFFSET_ADDRESS_A() {
-        memory.write(0xFF00 + (nextByte() & 0xFF), A);
+        int addr = 0xFF00 + (nextByte() & 0xFF);
+        memory.write(addr, A);
         clockCycles = 12;
     }
 
     private void op_LD_C_OFFSET_ADDRESS_A() {
-        memory.write(0xFF00 + getLower(BC), A);
+        memory.write(0xFF00 + (getLower(BC)&0xFF), A);
         clockCycles = 8;
     }
 
     private void op_LD_A_C_OFFSET() {
-        A = memory.read(0xFF00 + getLower(BC));
+        A = memory.read(0xFF00 + (getLower(BC)&0xFF));
         clockCycles = 8;
     }
 
     private void op_LDH_A_TO() {
-        memory.write((nextByte() & 0xFF) | ((nextByte()<<4) & 0xFF), A);
+        memory.write(nextPart(), A);
         clockCycles = 16;
     }
 
@@ -1329,7 +1351,7 @@ public class CPU {
         int address = nextPart();
         push16Bit(PC);
         PC = address;
-        System.out.println("CALL "+Integer.toHexString(address&0xFFFF));
+        //System.out.println("CALL "+Integer.toHexString(address&0xFFFF));
     }
 
     private void op_CALL_Z() {
@@ -2077,13 +2099,29 @@ public class CPU {
     }
 
     private void op_DEC_A() {
+        A = dec(A);
         clockCycles = 4;
-        A--;
+    }
+
+    private byte dec(byte r) {
+        H = (r & 0xF) == 0xF;
+        r--;
+        Z = (r&0xFF) == 0;
+        N = true;
+        return r;
+    }
+
+    private byte inc(byte r) {
+        H = (r & 0xF) == 0xF;
+        r++;
+        Z = r == 0;
+        N = false;
+        return r;
     }
 
     private void op_INC_A() {
         clockCycles = 4;
-        A++;
+        A = inc(A);
     }
 
     private void op_DEC_SP() {
@@ -2125,12 +2163,12 @@ public class CPU {
 
     private void op_DEC_HL_VALUE() {
         clockCycles = 12;
-        this.memory.write(HL, decrement(this.memory.read(HL)));
+        this.memory.write(HL, dec(this.memory.read(HL)));
     }
 
     private void op_INC_HL_VALUE() {
         clockCycles = 12;
-        this.memory.write(HL, increment(this.memory.read(HL)));
+        this.memory.write(HL, inc(this.memory.read(HL)));
     }
 
     private void op_INC_SP() {
@@ -2171,12 +2209,12 @@ public class CPU {
     }
 
     private void op_DEC_L() {
-        setLower("HL", decrement(getLower(getRegistryValue("HL"))));
+        setLower("HL", dec(getLower(HL)));
         clockCycles = 4;
     }
 
     private void op_INC_L() {
-        setLower("HL", increment(getLower(getRegistryValue("HL"))));
+        setLower("HL", inc(getLower(HL)));
         clockCycles = 4;
     }
 
@@ -2225,12 +2263,12 @@ public class CPU {
 
     private void op_DEC_H() {
         clockCycles = 4;
-        setUpper("HL", decrement(getUpper(getRegistryValue("HL"))));
+        setUpper("HL", dec(getUpper(HL)));
     }
 
     private void op_INC_H() {
         clockCycles = 4;
-        setUpper("HL", increment(getUpper(getRegistryValue("HL"))));
+        setUpper("HL", inc(getUpper(HL)));
     }
 
     private void op_INC_HL() {
@@ -2270,12 +2308,12 @@ public class CPU {
     }
 
     private void op_DEC_E() {
-        setLower("DE", decrement(getLower(getRegistryValue("DE"))));
+        setLower("DE", dec(getLower(DE)));
         clockCycles = 4;
     }
 
     private void op_INC_E() {
-        setLower("DE", increment(getLower(getRegistryValue("DE"))));
+        setLower("DE", inc(getLower(DE)));
         clockCycles = 4;
     }
 
@@ -2296,7 +2334,7 @@ public class CPU {
 
     private void op_JR() {
         clockCycles = 8;
-        relativeJump(nextByte());
+        relativeJump(nextByte() & 0xFF);
     //    PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
     }
 
@@ -2312,12 +2350,12 @@ public class CPU {
     }
 
     private void op_DEC_D() {
-        setUpper("DE", decrement(getUpper(getRegistryValue("DE"))));
+        setUpper("DE", dec(getUpper(DE)));
         clockCycles = 4;
     }
 
     private void op_INC_D() {
-        setUpper("DE", increment(getUpper(getRegistryValue("DE"))));
+        setUpper("DE", inc(getUpper(DE)));
         clockCycles = 4;
     }
 
@@ -2354,12 +2392,12 @@ public class CPU {
 
     private void op_DEC_C() {
         clockCycles = 4;
-        setLower("BC", decrement(getLower(getRegistryValue("BC"))));
+        setLower("BC", dec(getLower(BC)));
     }
 
     private void op_INC_C() {
         clockCycles = 4;
-        setLower("BC", increment(getLower(getRegistryValue("BC"))));
+        setLower("BC", inc(getLower(BC)));
     }
 
     private void op_DEC_BC() {
@@ -2394,12 +2432,12 @@ public class CPU {
     }
 
     private void op_INC_B() {
-        setUpper("BC", increment(getUpper(getRegistryValue("BC"))));
+        setUpper("BC", inc(getUpper(BC)));
         clockCycles = 4;
     }
 
     private void op_DEC_B() {
-        setUpper("BC", decrement(getUpper(getRegistryValue("BC"))));
+        setUpper("BC", dec(getUpper(BC)));
         clockCycles = 4;
     }
 
@@ -2423,15 +2461,15 @@ public class CPU {
         clockCycles = 4;
     }
 
-    public void setLower(String registry, int val) {
+    public void setLower(String registry, byte val) {
         int registryValue = getRegistryValue(registry);
         registryValue = ((registryValue & 0xFF00) | (val & 0xFF));
         setRegistryValue(registry, registryValue);
     }
 
-    public void setUpper(String registry, int val) {
+    public void setUpper(String registry, byte val) {
         int registryValue = getRegistryValue(registry);
-        registryValue = ((registryValue & 0x00FF) | ((val) << 8));
+        registryValue = ((registryValue & 0x00FF) | ((val & 0xFF) << 8));
         setRegistryValue(registry, registryValue);
     }
 
@@ -2449,17 +2487,17 @@ public class CPU {
         } else if (registry.equals("SP")) {
             SP = registryValue;
         } else if (registry.equals("B")) {
-            setUpper("BC", registryValue & 0xFF);
+            setUpper("BC", (byte) (registryValue & 0xFF));
         } else if (registry.equals("C")) {
-            setLower("BC", registryValue & 0xFF);
+            setLower("BC", (byte) (registryValue & 0xFF));
         } else if (registry.equals("D")) {
-            setUpper("DE", registryValue & 0xFF);
+            setUpper("DE", (byte) (registryValue & 0xFF));
         } else if (registry.equals("E")) {
-            setLower("DE", registryValue & 0xFF);
+            setLower("DE", (byte) (registryValue & 0xFF));
         } else if (registry.equals("H")) {
-            setUpper("HL", registryValue & 0xFF);
+            setUpper("HL", (byte) (registryValue & 0xFF));
         } else if (registry.equals("L")) {
-            setLower("HL", registryValue & 0xFF);
+            setLower("HL", (byte) (registryValue & 0xFF));
         } else if(registry.equals("(HL)")) {
             memory.write(HL, (byte) (registryValue & 0xFF));
         }
@@ -2504,29 +2542,13 @@ public class CPU {
         return (byte) ((val >> 8) & 0xFF);
     }
 
-    public byte increment(int val) {
-        H = (val & 0xF) == 0xF;
-        val++;
-        Z = val == 0;
-        N = false;
-        return (byte) val;
-    }
-
-    public byte decrement(int val) {
-        val--;
-        Z = val == 0;
-        N = true;
-        H = (val & 0xF) == 0xF;
-        return (byte) val;
-    }
-
     public void rst(int addr) {
         push16Bit(PC);
         PC = addr;
     }
 
-    public void add(int b) {
-        int n = (A) + (b);
+    public void add(byte b) {
+        int n = (A & 0xFF) + (b & 0xFF);
         Z = (n & 0xFF) == 0;
         H = (((A & 0x0F) + (b & 0x0F)) & 0x10) == 0x10;
         C = n > 0xFF;
@@ -2534,7 +2556,7 @@ public class CPU {
         A = (byte) (n & 0xFF);
     }
 
-    public void adc(int b) {
+    public void adc(byte b) {
         int n = (A) + (b);
         if (C) {
             n++;
@@ -2546,22 +2568,22 @@ public class CPU {
         A = (byte) (n & 0xFF);
     }
 
-    public void sub(int b) {
+    public void sub(byte b) {
         cp(b);
         A -= b;
     }
 
-    public void sbc(int b) {
+    public void sbc(byte b) {
         if(C)
             b++;
         H = ((A & 0xF) - (b & 0xF)) < 0;
-        C = ((A) - (b) - 1) < 0;
+        C = ((A & 0xFF) - (b & 0xFF) - 1) < 0;
         N = true;
-        A -= b;
+        A -= b & 0xFF;
         Z = A == 0;
     }
 
-    public void and(int b) {
+    public void and(byte b) {
         A &= b;
         Z = A == 0;
         H = true;
@@ -2569,7 +2591,7 @@ public class CPU {
         C = false;
     }
 
-    public void xor(int b) {
+    public void xor(byte b) {
         A ^= b;
         Z = A == 0;
         H = false;
@@ -2577,7 +2599,7 @@ public class CPU {
         C = false;
     }
 
-    public void or(int b) {
+    public void or(byte b) {
         A |= b;
         Z = A == 0;
         H = false;
@@ -2585,12 +2607,11 @@ public class CPU {
         C = false;
     }
 
-    public void cp(int b) {
-        byte byteValue = (byte)(b & 0xFF);
-        Z = A == byteValue;
-        H = (A & 0xF) < (byteValue & 0xF);
+    public void cp(byte b) {
+        Z = A == b;
+        H = (A & 0xF) < (b & 0xF);
         N = true;
-        C = A < byteValue;
+        C = A < b;
     }
 
     public byte rl(byte val) {
@@ -2683,8 +2704,8 @@ public class CPU {
     }
 
     public void addRegs(String registryA, String registryB) {
-        int a = getRegistryValue(registryA);
-        int b = getRegistryValue(registryB);
+        int a = getRegistryValue(registryA) & 0xFFFF;
+        int b = getRegistryValue(registryB) & 0xFFFF;
         int temp = a + b;
         N = false;
         C = temp > 0xFFFF;
@@ -2714,17 +2735,24 @@ public class CPU {
             int registerIndex = (b-0x40) % 8;
             int bitIndex = (b-0x40) / 8;
             String register = cbRegisterList[registerIndex];
-            bit(getRegistryValue(register), bitIndex);
+            bit(getRegistryValue(register) & 0xFF, bitIndex);
+            if(register.equals("(HL)"))
+                clockCycles = 16;
         } else if(b >= 0xC0 && b <= 0xFF) { // SET b,register opcodes
             int registerIndex = (b-0xC0) % 8;
             int bitIndex = (b-0xC0) / 8;
             String register = cbRegisterList[registerIndex];
             setRegistryValue(register, getRegistryValue(register) | (1<<bitIndex));
+            if(register.equals("(HL)"))
+                clockCycles = 16;
         } else if(b >= 0x80 && b <= 0xBF) { // RST b,register opcodes
             int registerIndex = (b-0x80) % 8;
             int bitIndex = (b-0x80) / 8;
             String register = cbRegisterList[registerIndex];
             setRegistryValue(register, getRegistryValue(register) & ~(1<<bitIndex));
+            clockCycles = 8;
+            if(register.equals("(HL)"))
+                clockCycles = 16;
         } else {
             switch (b) {
                 case 0x37: {

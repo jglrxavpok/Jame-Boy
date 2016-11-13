@@ -83,6 +83,10 @@ public class MBC1 extends BaseMemoryController {
 
         this.rom = rom;
         this.ram = ram;
+        inRamBankingMode = true;
+        currentROMBank = 1;
+        updateCurrentROMBank();
+        System.out.println("RAM size: "+ram.limit());
     }
 
     public int getRamBankCount() {
@@ -112,33 +116,26 @@ public class MBC1 extends BaseMemoryController {
     @Override
     public void write(int index, byte value) {
         super.write(index, value);
-        if(index >= 0x0000 && index <= 0x1FFF) {
+        if(ramBankCount > 0 && index >= 0x0000 && index <= 0x1FFF) {
             enableRAM = (value & 0b00001111) == (byte)0xA;
         }
 
         if(index >= 0x2000 && index <= 0x3FFF) {
-            if(value == 0x0) {
-                value = 0x1; // the MBC translates the value 0 to 1, for some reason
-            }
-            lowBank = (byte) (value & 0b00011111);
+            currentROMBank = value & 0x1F;
+            if((value & 0xF) == 0)
+                currentROMBank++;
             updateCurrentROMBank();
         }
 
         if(index >= 0x4000 && index <= 0x5FFF) {
-            byte register = (byte) (value & 0b11);
-            if(inRamBankingMode) {
-                currentRAMBank = register & 0xFF;
-            } else {
-                highBank = register;
-                updateCurrentROMBank();
-            }
+            currentRAMBank = value & 0x03;
         }
 
         if(index >= 0x6000 && index <= 0x7FFF) {
             inRamBankingMode = value == 0x1;
         }
 
-        if(index >= 0xA000 && index <= 0xBFFF) {
+        if(enableRAM && index >= 0xA000 && index <= 0xBFFF && ramBankCount > 0) {
             int effectiveRAMBank = 0;
             if(inRamBankingMode)
                 effectiveRAMBank = currentRAMBank;
@@ -147,8 +144,8 @@ public class MBC1 extends BaseMemoryController {
     }
 
     private void updateCurrentROMBank() {
-        currentROMBank = highBank << 8 | lowBank;
         romOffset = currentROMBank * 0x4000;
+        System.out.println("rom bank: "+currentROMBank);
     }
 
     @Override
@@ -158,10 +155,10 @@ public class MBC1 extends BaseMemoryController {
         }
 
         if(index >= 0x4000 && index <= 0x7FFF) {
-            return rom.get(index & 0x3FFF + romOffset);
+            return rom.get((index-0x4000) + romOffset);
         }
 
-        if(index >= 0xA000 && index <= 0xBFFF) {
+        if(enableRAM && index >= 0xA000 && index <= 0xBFFF && ramBankCount > 0) {
             int effectiveRAMBank = 0;
             if(inRamBankingMode)
                 effectiveRAMBank = currentRAMBank;

@@ -1,6 +1,7 @@
 package org.jglrxavpok.jameboy.memory;
 
 import org.jglrxavpok.jameboy.graphics.GPU;
+import org.jglrxavpok.jameboy.io.IOHandler;
 
 @Deprecated
 public class ROMOnlyHandler implements MemoryController {
@@ -46,7 +47,12 @@ public class ROMOnlyHandler implements MemoryController {
     }
 
     @Override
-    public void disableInterrupt(Interrupts interrupt) {
+    public void resetInterrupt(Interrupts interrupt) {
+
+    }
+
+    @Override
+    public void setIOHandler(IOHandler handler) {
 
     }
 

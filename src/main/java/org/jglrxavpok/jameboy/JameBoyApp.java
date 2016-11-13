@@ -87,9 +87,12 @@ public class JameBoyApp {
         return core.getCurrentROM() != null;
     }
 
-    public void doCycle() {
-        if(hasRomLoaded())
-            core.cycle();
+    public void doCycles(int count) {
+        if(hasRomLoaded()) {
+            for (int i = 0; i < count;) {
+                i += core.cycle();
+            }
+        }
     }
 
 

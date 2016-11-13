@@ -38,6 +38,9 @@ public class GPU {
     public static final int ADDR_LY = 0xFF44;
     public static final int ADDR_LYC = 0xFF45;
     public static final byte VBLANK_MODE = 0x1;
+    public static final byte HBLANK_MODE = 0x0;
+    public static final byte OAM_READ_MODE = 0x2;
+    public static final byte VRAM_READ_MODE = 0x3;
     private final ByteBuffer videoRAM;
     private final ByteBuffer oam;
     private final List<SpriteBlock> spriteBlocks;
@@ -68,6 +71,8 @@ public class GPU {
     private boolean enableDisplay;
     private MemoryController memory;
     private byte lyc;
+    private byte oamTransferStart;
+    private boolean thrownLCDInt;
 
     public GPU() {
         videoRAM = ByteBuffer.allocate(8*1024);
@@ -117,6 +122,8 @@ public class GPU {
             windowX = value & 0xFF;
         } else if(index == ADDR_WY) {
             windowY = value & 0xFF;
+        } else if(index == ADDR_OAM_DMA_TRANSFER) {
+            oamTransferStart = value;
         } else if(index == ADDR_LCDC) {
             enableDisplay = BitUtils.getBit(value, 7);
 
@@ -139,7 +146,6 @@ public class GPU {
             interruptOAM = BitUtils.getBit(value, 5);
             vBlankInterrupt = BitUtils.getBit(value, 4);
             hBlankInterrupt = BitUtils.getBit(value, 3);
-
         } else if(index == ADDR_SCROLL_Y) {
             scrollY = value & 0xFF;
         } else if(index >= ADDR_VRAM_START && index < ADDR_VRAM_END) {
@@ -148,6 +154,8 @@ public class GPU {
             oam.put(index - ADDR_OAM_START, value);
         } else if(!isValidGPUAddress(index)) {
             throw new IllegalArgumentException("Invalid address for GPU: "+Integer.toHexString(index).toUpperCase());
+        } else {
+            System.out.println("GPU: Unknown write address: "+Integer.toHexString(index).toUpperCase());
         }
     }
 
@@ -202,6 +210,12 @@ public class GPU {
             return value;
         } else if(index == ADDR_LY) {
             return (byte) lineY;
+        } else if(index == ADDR_SCROLL_X) {
+            return (byte) scrollX;
+        } else if(index == ADDR_SCROLL_Y) {
+            return (byte) scrollY;
+        } else if(index == ADDR_OAM_DMA_TRANSFER) {
+            return oamTransferStart;
         } else if(index >= ADDR_VRAM_START && index < ADDR_VRAM_END) {
             return videoRAM.get(index - ADDR_VRAM_START);
         } else if(index >= ADDR_OAM_START && index < ADDR_OAM_END) {
@@ -209,7 +223,7 @@ public class GPU {
         } else if(!isValidGPUAddress(index)) {
             throw new IllegalArgumentException("Invalid address for GPU: "+Integer.toHexString(index).toUpperCase());
         } else {
-            System.out.println("Unknown addr: "+Integer.toHexString(index));
+            System.out.println("GPU: Unknown read address: "+Integer.toHexString(index).toUpperCase());
         }
         return 0;
     }
@@ -234,26 +248,45 @@ public class GPU {
     }
 
     public void step(int cycles) {
+        if(!enableDisplay) {
+            modeFlag = HBLANK_MODE;
+            return;
+        }
         clockCount+=cycles;
+
+        if(coincidenceInterrupt && lineY == (lyc & 0xFF)) {
+            memory.interrupt(Interrupts.LCD_COINCIDENCE);
+        }
+
+        if(lineY >= 144) {
+            modeFlag = VBLANK_MODE;
+            thrownLCDInt = false;
+        } else {
+            if (clockCount >= 80) {
+                modeFlag = OAM_READ_MODE;
+                thrownLCDInt = false;
+            } else if (clockCount >= 172 + 80) {
+                modeFlag = VRAM_READ_MODE;
+                thrownLCDInt = false;
+            } else {
+                modeFlag = HBLANK_MODE;
+                if(!thrownLCDInt && hBlankInterrupt) {
+                    memory.interrupt(Interrupts.LCD_COINCIDENCE);
+                    thrownLCDInt = true;
+                }
+            }
+        }
 
         if(clockCount >= 456) {
             clockCount = 0;
             sortSprites();
 
-            if(coincidenceInterrupt && lineY == (lyc & 0xFF)) {
-                memory.interrupt(Interrupts.LDC_COINCIDENCE);
+            if(lineY < 144) {
+                renderSingleLine();
             }
 
-            if(lineY < 144) {
-                if(enableDisplay)
-                    renderSingleLine();
-            } else {
-                if(lineY == 144) {
-                    if(vBlankInterrupt) {
-                        memory.interrupt(Interrupts.V_BLANK);
-                    }
-                }
-                modeFlag = VBLANK_MODE;
+            if(lineY == 144) {
+                memory.interrupt(Interrupts.V_BLANK);
             }
             lineY++;
 
