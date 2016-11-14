@@ -1,5 +1,6 @@
 package org.jglrxavpok.jameboy;
 
+import org.jglrxavpok.jameboy.debug.DebuggerFrame;
 import org.jglrxavpok.jameboy.graphics.old.Screen;
 import org.jglrxavpok.jameboy.input.Keyboard;
 import org.jglrxavpok.jameboy.io.IOHandler;
@@ -128,9 +129,16 @@ public class EmulatorThread extends Thread {
         handler.setSelectPressed(Keyboard.isKeyDown(KeyEvent.VK_BACK_SPACE));
 
         if (JameBoyApp.emulator.hasRomLoaded()) {
-            int count = (int) (4194304 / GAME_HERTZ);
-            JameBoyApp.emulator.doCycles(count);
+            if(!JameBoyApp.emulator.getCore().isPaused()) {
+                int count = (int) (4194304 / GAME_HERTZ);
+                JameBoyApp.emulator.doCycles(count);
+            } else if(JameBoyApp.emulator.getCore().shouldStep()) {
+                JameBoyApp.emulator.doCycles(1);
+                JameBoyApp.emulator.getCore().stepDone();
+            }
         }
+
+        DebuggerFrame.getInstance().onUpdate();
     }
 
     public void render(Graphics g, float interpolation) {

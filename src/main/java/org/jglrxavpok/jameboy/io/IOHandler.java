@@ -30,30 +30,30 @@ public class IOHandler {
 
     public byte read(int address) {
         if(address == ADDR_JOYPAD) {
-            byte val = 0;
+            byte val = (byte) 0xFF;
             if(selection == IOJoypadSelection.DIRECTIONS) {
-                val |= (1<<5);
+                val &= ~(1<<4);
                 if(!leftPressed)
-                    val |= 1<<1;
+                    val &= ~(1<<1);
                 if(!rightPressed)
-                    val |= 0x1;
+                    val &= ~(0x1);
                 if(!upPressed)
-                    val |= 1<<2;
+                    val &= ~(1<<2);
                 if(!downPressed) {
-                    val |= 1 << 3;
+                    val &= ~(1 << 3);
                 }
             } else if(selection == IOJoypadSelection.BUTTONS) {
-                val |= (1<<4);
+                val &= (1<<5);
                 if(!bPressed)
-                    val |= 1<<1;
+                    val &= ~(1<<1);
                 if(!aPressed)
-                    val |= 0x1;
+                    val &= ~(0x1);
                 if(!selectPressed)
-                    val |= 1<<2;
+                    val &= ~(1<<2);
                 if(!startPressed)
-                    val |= 1<<3;
+                    val &= ~(1<<3);
             }
-            return (byte) (val | 0xC0);
+            return val;
         }
         return 0;
     }

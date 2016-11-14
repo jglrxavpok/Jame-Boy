@@ -1,5 +1,6 @@
 package org.jglrxavpok.jameboy;
 
+import org.jglrxavpok.jameboy.debug.DebuggerFrame;
 import org.jglrxavpok.jameboy.graphics.old.Screen;
 import org.jglrxavpok.jameboy.input.Keyboard;
 import org.jglrxavpok.jameboy.input.Mouse;
@@ -65,6 +66,15 @@ public class JameBoyApp {
         });
         fileMenu.add(open);
         bar.add(fileMenu);
+
+        Menu debuggingMenu = new Menu("Debugging");
+        MenuItem debugger = new MenuItem("Debugger");
+        debugger.addActionListener(e -> {
+            emulator.getCore().setPaused(true);
+            DebuggerFrame.getInstance().setVisible(true);
+        });
+        debuggingMenu.add(debugger);
+        bar.add(debuggingMenu);
         mainFrame.setMenuBar(bar);
         mainFrame.setVisible(true);
         emulatorThread = new EmulatorThread();

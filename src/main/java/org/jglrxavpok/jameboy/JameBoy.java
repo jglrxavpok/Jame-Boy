@@ -16,6 +16,9 @@ public class JameBoy {
     private GameROM currentROM;
     private MemoryController memoryController;
     private GPU gpu;
+    private boolean paused;
+    private boolean shouldStep;
+    private org.jglrxavpok.jameboy.CPU CPU;
 
     public JameBoy() {
         cpu = new CPU();
@@ -61,5 +64,29 @@ public class JameBoy {
 
     public GPU getGPU() {
         return gpu;
+    }
+
+    public boolean isPaused() {
+        return paused;
+    }
+
+    public void setPaused(boolean paused) {
+        this.paused = paused;
+    }
+
+    public boolean shouldStep() {
+        return shouldStep;
+    }
+
+    public void stepDone() {
+        shouldStep = false;
+    }
+
+    public void requestStep() {
+        shouldStep = true;
+    }
+
+    public CPU getCPU() {
+        return cpu;
     }
 }
