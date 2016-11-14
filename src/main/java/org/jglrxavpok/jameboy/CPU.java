@@ -14,7 +14,6 @@ public class CPU {
     public int PC = 0x100;
     public int SP = 0;
     private int clockCycles = 0;
-    private JameBoyApp emulator;
     public byte A;
     public boolean Z;
     public boolean N;
@@ -2334,7 +2333,7 @@ public class CPU {
 
     private void op_JR() {
         clockCycles = 8;
-        relativeJump(nextByte() & 0xFF);
+        relativeJump(nextByte());
     //    PC -= 2; // accounts for the fact that the PC increased twice before running this instruction
     }
 

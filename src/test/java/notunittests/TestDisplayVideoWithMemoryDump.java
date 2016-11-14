@@ -3,6 +3,7 @@ package notunittests;
 import org.jglrxavpok.jameboy.JameBoy;
 import org.jglrxavpok.jameboy.graphics.GPU;
 import org.jglrxavpok.jameboy.memory.NoMBC;
+import org.jglrxavpok.jameboy.utils.IOUtils;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -47,14 +48,6 @@ public class TestDisplayVideoWithMemoryDump {
 
     private static byte[] readRaw(String name) throws IOException {
         InputStream in = TestDisplayVideoWithMemoryDump.class.getResourceAsStream("/"+name);
-        byte[] buffer = new byte[4*1024];
-        int i;
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        while((i = in.read(buffer)) != -1) {
-            out.write(buffer, 0, i);
-        }
-        out.flush();
-        out.close();
-        return out.toByteArray();
+        return IOUtils.read(in);
     }
 }

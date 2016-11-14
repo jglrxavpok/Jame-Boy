@@ -4,6 +4,7 @@ import org.jglrxavpok.jameboy.graphics.old.Screen;
 import org.jglrxavpok.jameboy.input.Keyboard;
 import org.jglrxavpok.jameboy.input.Mouse;
 import org.jglrxavpok.jameboy.memory.GameROM;
+import org.jglrxavpok.jameboy.utils.IOUtils;
 
 import javax.swing.*;
 import java.awt.*;
@@ -16,7 +17,7 @@ public class JameBoyApp {
     public static JFrame mainFrame;
     public static int scale;
     public static Screen screen;
-    public static EmulatorThread emulatorThread;
+    private static EmulatorThread emulatorThread;
     private static JFileChooser chooser;
     private final JameBoy core;
 
@@ -54,7 +55,7 @@ public class JameBoyApp {
             if (f != null) {
                 try {
                     FileInputStream in = new FileInputStream(f);
-                    byte[] rawRom = read(in);
+                    byte[] rawRom = IOUtils.read(in);
                     GameROM rom = new GameROM(ByteBuffer.wrap(rawRom));
                     emulator.core.loadROM(rom);
                 } catch (Exception e) {
@@ -68,18 +69,6 @@ public class JameBoyApp {
         mainFrame.setVisible(true);
         emulatorThread = new EmulatorThread();
         emulatorThread.start();
-    }
-
-    public static byte[] read(InputStream stream) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        int i;
-        byte[] buffer = new byte[65565];
-        while ((i = stream.read(buffer, 0, buffer.length)) != -1) {
-            baos.write(buffer, 0, i);
-        }
-        baos.flush();
-        baos.close();
-        return baos.toByteArray();
     }
 
     public boolean hasRomLoaded() {

@@ -44,7 +44,12 @@ public class GPU {
     private final ByteBuffer videoRAM;
     private final ByteBuffer oam;
     private final List<SpriteBlock> spriteBlocks;
-    private final int[] backgroundColors;
+    private final int[] grayScaleBackgroundColors;
+    private final int[] greenScaleBackgroundColors;
+
+    // TODO: Make it modifiable in settings
+    private int[] backgroundColors;
+
     private int[] pixels;
     private int clockCount;
     private int lineY;
@@ -83,12 +88,21 @@ public class GPU {
             spriteBlocks.add(new SpriteBlock(i*4 + ADDR_OAM_START, this));
         }
 
-        backgroundColors = new int[] {
+        grayScaleBackgroundColors = new int[] {
                 0xFFFFFFFF,
                 0xFFDDDDDD,
                 0xFF808080,
                 0xFF000000
         };
+
+        greenScaleBackgroundColors = new int[] {
+                0xFF00FF00,
+                0xFF00DD00,
+                0xFF008000,
+                0xFF000000
+        };
+
+        backgroundColors = greenScaleBackgroundColors;
 
         pixels = new int[WIDTH*HEIGHT];
 
@@ -99,8 +113,6 @@ public class GPU {
         System.arraycopy(backgroundColors, 0, backgroundPalette, 0, backgroundColors.length);
         System.arraycopy(backgroundColors, 0, obj0Palette, 0, backgroundColors.length);
         System.arraycopy(backgroundColors, 0, obj1Palette, 0, backgroundColors.length);
-
-        currentSpriteHeight = 8;
 
         write(ADDR_LCDC, (byte) 0x91);
     }
@@ -293,7 +305,6 @@ public class GPU {
             if(lineY >= 154) {
                 lineY = 0;
             }
-            // TODO: implement better GPU clock ?
         }
     }
 

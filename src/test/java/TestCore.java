@@ -1,6 +1,7 @@
 import org.jglrxavpok.jameboy.JameBoy;
 import org.jglrxavpok.jameboy.memory.GameROM;
 import org.jglrxavpok.jameboy.memory.MBC1;
+import org.jglrxavpok.jameboy.utils.IOUtils;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -14,15 +15,7 @@ public class TestCore {
 
     private byte[] readTestROM(String name) throws IOException {
         InputStream in = getClass().getResourceAsStream("/roms/"+name+".gb");
-        byte[] buffer = new byte[4*1024];
-        int i;
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        while((i = in.read(buffer)) != -1) {
-            out.write(buffer, 0, i);
-        }
-        out.flush();
-        out.close();
-        return out.toByteArray();
+        return IOUtils.read(in);
     }
 
     @Test

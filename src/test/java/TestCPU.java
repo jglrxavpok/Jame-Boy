@@ -9,6 +9,8 @@ import static org.junit.Assert.*;
 
 // based on http://marc.rawer.de/Gameboy/Docs/GBCPUman.pdf
 // and http://www.pastraiser.com/cpu/gameboy/gameboy_opcodes.html
+
+// NOTHING WORKS FOR THE MOMENT
 public class TestCPU {
 
     private CPU cpu;
