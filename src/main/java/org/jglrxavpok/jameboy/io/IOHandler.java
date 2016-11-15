@@ -18,9 +18,9 @@ public class IOHandler {
 
     public void write(int address, byte value) {
         if(address == ADDR_JOYPAD) {
-            if(!BitUtils.getBit(value & 0xFF, 5)) {
+            if(BitUtils.getBit(value & 0xFF, 5) && !BitUtils.getBit(value & 0xFF, 4)) {
                 selection = IOJoypadSelection.DIRECTIONS;
-            } else if(!BitUtils.getBit(value & 0xFF, 4)) {
+            } else if(BitUtils.getBit(value & 0xFF, 4) && !BitUtils.getBit(value & 0xFF, 5)) {
                 selection = IOJoypadSelection.BUTTONS;
             } else {
                 selection = IOJoypadSelection.NONE;
@@ -32,26 +32,27 @@ public class IOHandler {
         if(address == ADDR_JOYPAD) {
             byte val = (byte) 0xFF;
             if(selection == IOJoypadSelection.DIRECTIONS) {
-                val &= ~(1<<4);
-                if(!leftPressed)
-                    val &= ~(1<<1);
-                if(!rightPressed)
-                    val &= ~(0x1);
-                if(!upPressed)
-                    val &= ~(1<<2);
-                if(!downPressed) {
-                    val &= ~(1 << 3);
+                val &= (~(1<<4)) & 0xFF;
+                if(rightPressed)
+                    val &= (~(1<<1)) & 0xFF;
+                if(leftPressed)
+                    val &= (~(0x1)) & 0xFF;
+                if(downPressed)
+                    val &= (~(1 << 2)) & 0xFF;
+                if(upPressed) {
+                    val &= (~(1 << 3)) & 0xFF;
                 }
             } else if(selection == IOJoypadSelection.BUTTONS) {
-                val &= (1<<5);
-                if(!bPressed)
-                    val &= ~(1<<1);
-                if(!aPressed)
-                    val &= ~(0x1);
-                if(!selectPressed)
-                    val &= ~(1<<2);
-                if(!startPressed)
-                    val &= ~(1<<3);
+                val &= (~(1<<5)) & 0xFF;
+                if(aPressed)
+                    val &= (~(1<<1)) & 0xFF;
+                if(bPressed)
+                    val &= (~(0x1)) & 0xFF;
+                if(selectPressed)
+                    val &= (~(1 << 2)) & 0xFF;
+                if(startPressed) {
+                    val &= (~(1 << 3)) & 0xFF;
+                }
             }
             return val;
         }
