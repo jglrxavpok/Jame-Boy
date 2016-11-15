@@ -77,7 +77,6 @@ public class CPU {
         SP = 0;
         PC = 0x100;
         halted = false;
-        masterInterrupt = true;
     }
 
     private int executeOP(int opcode) {
@@ -3171,6 +3170,7 @@ public class CPU {
     public void turnOn() {
         stop = false;
         hardReset();
+        masterInterrupt = true;
         A = 1;
         BC = 0x13;
         DE = 0xD8;

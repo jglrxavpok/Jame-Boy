@@ -15,6 +15,7 @@ public class MemoryControllers {
     public static void initControllers() {
         registerControllerFactory("ROM ONLY", (romData, romSize, ramSize) -> new NoMBC(romData, ByteBuffer.allocate(ramSize)));
         registerControllerFactory("MBC1", (romData, romSize, ramSize) -> new MBC1(romSize, ramSize, romData, ByteBuffer.allocate(ramSize))); // TODO: Allow saving to file
+        registerControllerFactory("MBC1+RAM+BATTERY", (romData, romSize, ramSize) -> new MBC1(romSize, ramSize, romData, ByteBuffer.allocate(ramSize))); // TODO: Implement RAM + battery?
     }
 
     private MemoryControllers() {}
@@ -27,7 +28,7 @@ public class MemoryControllers {
         String controllerID = CartridgeHeader.getCartrigeTypeName(rom.getHeader().getCartrigeType());
         MemoryControllerFactory factory = factories.get(controllerID);
         if(factory == null)
-            throw new UnsupportedOperationException("Controller "+controllerID+" is not supported yet");
+            throw new UnsupportedOperationException("Controller "+controllerID+"("+rom.getHeader().getCartrigeType()+")"+" is not supported yet");
         return factory.create(rom.getData(), rom.getHeader().getROMSize(), rom.getHeader().getRAMSize());
     }
 

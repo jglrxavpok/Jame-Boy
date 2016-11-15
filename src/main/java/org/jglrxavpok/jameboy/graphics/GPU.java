@@ -72,7 +72,6 @@ public class GPU {
     private boolean hBlankInterrupt;
     private boolean vBlankInterrupt;
     private boolean interruptOAM;
-    private boolean coincidenceFlag;
     private boolean enableDisplay;
     private MemoryController memory;
     private byte lyc;
@@ -115,6 +114,7 @@ public class GPU {
         System.arraycopy(backgroundColors, 0, obj1Palette, 0, backgroundColors.length);
 
         write(ADDR_LCDC, (byte) 0x91);
+        write(ADDR_STAT, (byte) 0x85);
     }
 
     public boolean isValidGPUAddress(int address) {
@@ -154,7 +154,7 @@ public class GPU {
         } else if(index == ADDR_SCROLL_X) {
             scrollX = value & 0xFF;
         } else if(index == ADDR_STAT) {
-            coincidenceFlag = BitUtils.getBit(value, 6);
+            coincidenceInterrupt = BitUtils.getBit(value, 6);
             interruptOAM = BitUtils.getBit(value, 5);
             vBlankInterrupt = BitUtils.getBit(value, 4);
             hBlankInterrupt = BitUtils.getBit(value, 3);
@@ -216,7 +216,7 @@ public class GPU {
                 value |= 1<<4;
             if(hBlankInterrupt)
                 value |= 1<<3;
-            if(coincidenceFlag)
+            if(coincidenceInterrupt)
                 value |= 1<<2;
             value |= modeFlag;
             return value;
