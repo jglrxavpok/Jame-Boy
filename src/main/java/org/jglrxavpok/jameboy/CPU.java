@@ -46,11 +46,13 @@ public class CPU {
     private byte nextByte() {
         byte value = this.memory.read(PC);
         PC++;
+        PC &= 0xFFFF;
         return value;
     }
 
     public void push16Bit(int val) {
         SP -= 2;
+        SP &= 0xFFFF;
         write16Bits(SP, val & 0xFFFF);
     }
 
@@ -58,6 +60,7 @@ public class CPU {
         int val = (this.memory.read(SP) & 0xFF)
                 | ((this.memory.read(SP + 1) & 0xFF) << 8);
         SP += 2;
+        SP &= 0xFFFF;
         return val & 0xFFFF;
     }
 
@@ -1263,7 +1266,7 @@ public class CPU {
         byte val = nextByte();
         H = (PC & 0x0FFF) + (val & 0xFF) > 0x0FFF;
         C = (val & 0xFF) + PC > 0xFFFF;
-        HL = signedAdd(SP, val & 0xFF); // val is signed here
+        HL = signedAdd(SP, val & 0xFF) & 0xFFFF; // val is signed here
         clockCycles = 12;
     }
 
@@ -2134,11 +2137,13 @@ public class CPU {
     private void op_DEC_SP() {
         clockCycles = 8;
         SP--;
+        SP &= 0xFFFF;
     }
 
     private void op_LD_A_HL_DEC() {
         A = this.memory.read(HL);
         HL--;
+        HL &= 0xFFFF;
         clockCycles = 8;
     }
 
@@ -2181,6 +2186,7 @@ public class CPU {
 
     private void op_INC_SP() {
         SP++;
+        SP &= 0xFFFF;
         clockCycles = 8;
     }
 
@@ -2188,6 +2194,7 @@ public class CPU {
         clockCycles = 8;
         this.memory.write(HL, A);
         HL--;
+        HL &= 0xFFFF;
     }
 
     private void op_LD_SP16b() {
@@ -2229,12 +2236,14 @@ public class CPU {
 
     private void op_DEC_HL() {
         HL--;
+        HL &= 0xFFFF;
         clockCycles = 8;
     }
 
     private void op_LD_A_HL_INC() {
         clockCycles = 8;
         A = this.memory.read(HL++);
+        HL &= 0xFFFF;
     }
 
     private void op_ADD_HL_HL() {
@@ -2284,12 +2293,14 @@ public class CPU {
     private void op_INC_HL() {
         clockCycles = 8;
         HL++;
+        HL &= 0xFFFF;
     }
 
     private void op_LD_HL_INC_A() {
         clockCycles = 8;
         this.memory.write(HL, A);
         HL++;
+        HL &= 0xFFFF;
     }
 
     private void op_LD_HL() {
@@ -2330,6 +2341,7 @@ public class CPU {
 
     private void op_DEC_DE() {
         DE--;
+        DE &= 0xFFFF;
         clockCycles = 8;
     }
 
@@ -2373,6 +2385,7 @@ public class CPU {
     private void op_INC_DE() {
         clockCycles = 8;
         DE++;
+        DE &= 0xFFFF;
     }
 
     private void op_LD_DE_A() {
@@ -2414,6 +2427,7 @@ public class CPU {
     private void op_DEC_BC() {
         clockCycles = 8;
         BC--;
+        BC &= 0xFFFF;
     }
 
     private void op_LD_A_BC() {
@@ -2454,6 +2468,7 @@ public class CPU {
 
     private void op_INC_BC() {
         BC++;
+        BC &= 0xFFFF;
         clockCycles = 8;
     }
 
@@ -2520,7 +2535,7 @@ public class CPU {
         if (registry.equals("BC")) {
             return BC;
         } else if (registry.equals("A")) {
-            return A;
+            return A & 0xFF;
         } else if (registry.equals("F")) {
             return getFlags();
         } else if (registry.equals("DE")) {
@@ -2647,7 +2662,7 @@ public class CPU {
         N = false;
         val <<= 1;
         if(C)
-            val ^= 0x1;
+            val += 0x1;
         Z = val == 0;
         return val;
     }
@@ -2729,7 +2744,7 @@ public class CPU {
 
     public void relativeJump(int d) {
         //PC += d;
-        PC = signedAdd(PC, d);
+        PC = signedAdd(PC, d) & 0xFFFF;
     }
 
     private int signedAdd(int a, int b) {
