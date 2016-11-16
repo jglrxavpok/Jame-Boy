@@ -1,5 +1,6 @@
 package org.jglrxavpok.jameboy.memory;
 
+import org.jglrxavpok.jameboy.cpu.Z80Timer;
 import org.jglrxavpok.jameboy.graphics.GPU;
 import org.jglrxavpok.jameboy.io.IOHandler;
 
@@ -17,5 +18,7 @@ public interface MemoryController {
 
     void resetInterrupt(Interrupts interrupt);
 
-    void setIOHandler(IOHandler handler);
+    IOHandler getIOHandler();
+
+    void setTimer(Z80Timer timer);
 }

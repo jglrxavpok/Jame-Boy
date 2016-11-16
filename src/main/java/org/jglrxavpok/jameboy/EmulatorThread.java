@@ -119,14 +119,16 @@ public class EmulatorThread extends Thread {
             }
         }*/
         IOHandler handler = JameBoyApp.emulator.getCore().getIOHandler();
-        handler.setLeftPressed(Keyboard.isKeyDown(KeyEvent.VK_LEFT));
-        handler.setUpPressed(Keyboard.isKeyDown(KeyEvent.VK_UP));
-        handler.setRightPressed(Keyboard.isKeyDown(KeyEvent.VK_RIGHT));
-        handler.setDownPressed(Keyboard.isKeyDown(KeyEvent.VK_DOWN));
-        handler.setBPressed(Keyboard.isKeyDown(KeyEvent.VK_A));
-        handler.setAPressed(Keyboard.isKeyDown(KeyEvent.VK_S));
-        handler.setStartPressed(Keyboard.isKeyDown(KeyEvent.VK_ENTER));
-        handler.setSelectPressed(Keyboard.isKeyDown(KeyEvent.VK_BACK_SPACE));
+        if(handler != null) {
+            handler.setLeftPressed(Keyboard.isKeyDown(KeyEvent.VK_LEFT));
+            handler.setUpPressed(Keyboard.isKeyDown(KeyEvent.VK_UP));
+            handler.setRightPressed(Keyboard.isKeyDown(KeyEvent.VK_RIGHT));
+            handler.setDownPressed(Keyboard.isKeyDown(KeyEvent.VK_DOWN));
+            handler.setBPressed(Keyboard.isKeyDown(KeyEvent.VK_A));
+            handler.setAPressed(Keyboard.isKeyDown(KeyEvent.VK_S));
+            handler.setStartPressed(Keyboard.isKeyDown(KeyEvent.VK_ENTER));
+            handler.setSelectPressed(Keyboard.isKeyDown(KeyEvent.VK_BACK_SPACE));
+        }
 
         if (JameBoyApp.emulator.hasRomLoaded()) {
             if(!JameBoyApp.emulator.getCore().isPaused()) {

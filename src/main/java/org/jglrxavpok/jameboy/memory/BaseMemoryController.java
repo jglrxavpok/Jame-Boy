@@ -1,5 +1,6 @@
 package org.jglrxavpok.jameboy.memory;
 
+import org.jglrxavpok.jameboy.cpu.Z80Timer;
 import org.jglrxavpok.jameboy.graphics.GPU;
 import org.jglrxavpok.jameboy.io.IOHandler;
 import org.jglrxavpok.jameboy.utils.BitUtils;
@@ -16,11 +17,19 @@ public class BaseMemoryController implements MemoryController {
     private GPU gpu;
     private byte interruptFlags;
     private byte interruptEnable;
+    private Z80Timer timer;
+
+    public BaseMemoryController() {
+        ioHandler = new IOHandler(this);
+    }
 
     @Override
     public void write(int index, byte value) {
         if(index == 0xFF00) {
             ioHandler.write(index, value);
+        }
+        if(index >= Z80Timer.ADDR_DIV_REGISTER && index <= Z80Timer.ADDR_TIMER_CONTROL) {
+            timer.write(index, value);
         }
         if(index == ADDR_INTERRUPT_ENABLE) {
             interruptEnable = value;
@@ -61,6 +70,9 @@ public class BaseMemoryController implements MemoryController {
     public byte read(int index) {
         if(index == 0xFF00) {
             return ioHandler.read(index);
+        }
+        if(index >= Z80Timer.ADDR_DIV_REGISTER && index <= Z80Timer.ADDR_TIMER_CONTROL) {
+            return timer.read(index);
         }
         if(index == ADDR_INTERRUPT_ENABLE) {
             return interruptEnable;
@@ -119,7 +131,16 @@ public class BaseMemoryController implements MemoryController {
     }
 
     @Override
-    public void setIOHandler(IOHandler handler) {
-        ioHandler = handler;
+    public IOHandler getIOHandler() {
+        return ioHandler;
+    }
+
+    @Override
+    public void setTimer(Z80Timer timer) {
+        this.timer = timer;
+    }
+
+    public Z80Timer getTimer() {
+        return timer;
     }
 }

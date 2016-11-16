@@ -16,9 +16,6 @@ public class GPU {
 
     public static final int WIDTH = 160;
     public static final int HEIGHT = 144;
-    public static final int MIN_SPRITE_WIDTH = 8;
-    public static final int MAX_SPRITE_WIDTH = 16;
-    public static final int SPRITE_HEIGHT = 8;
     public static final int ADDR_OAM_START = 0xFE00;
     public static final int ADDR_OAM_END = 0xFEA0;
     public static final int ADDR_VRAM_START = 0x8000;
@@ -101,7 +98,7 @@ public class GPU {
                 0xFF000000
         };
 
-        backgroundColors = greenScaleBackgroundColors;
+        backgroundColors = grayScaleBackgroundColors;
 
         pixels = new int[WIDTH*HEIGHT];
 
@@ -153,13 +150,13 @@ public class GPU {
             lyc = value;
         } else if(index == ADDR_SCROLL_X) {
             scrollX = value & 0xFF;
+        } else if(index == ADDR_SCROLL_Y) {
+            scrollY = value & 0xFF;
         } else if(index == ADDR_STAT) {
             coincidenceInterrupt = BitUtils.getBit(value, 6);
             interruptOAM = BitUtils.getBit(value, 5);
             vBlankInterrupt = BitUtils.getBit(value, 4);
             hBlankInterrupt = BitUtils.getBit(value, 3);
-        } else if(index == ADDR_SCROLL_Y) {
-            scrollY = value & 0xFF;
         } else if(index >= ADDR_VRAM_START && index < ADDR_VRAM_END) {
             videoRAM.put(index - ADDR_VRAM_START, value);
         } else if(index >= ADDR_OAM_START && index < ADDR_OAM_END) {
@@ -226,6 +223,10 @@ public class GPU {
             return (byte) scrollX;
         } else if(index == ADDR_SCROLL_Y) {
             return (byte) scrollY;
+        } else if(index == ADDR_WX) {
+            return (byte) windowX;
+        } else if(index == ADDR_WY) {
+            return (byte) windowY;
         } else if(index == ADDR_OAM_DMA_TRANSFER) {
             return oamTransferStart;
         } else if(index >= ADDR_VRAM_START && index < ADDR_VRAM_END) {
@@ -339,7 +340,7 @@ public class GPU {
 
     private void renderWindowLine() {
         for (int x = 0; x < WIDTH; x++) {
-            int tileX = x+windowX-7;
+            int tileX = x-windowX+7;
             int tileY = lineY-windowY;
 
             if(tileY < 0)
@@ -375,8 +376,8 @@ public class GPU {
 
     private void renderBackgroundLine() {
         for (int x = 0; x < WIDTH; x++) {
-            int tileX = x+scrollX;
-            int tileY = lineY+scrollY;
+            int tileX = x-scrollX;
+            int tileY = lineY-scrollY;
 
             int tileColumn = tileX / 8;
             int tileRow = tileY / 8;
@@ -415,8 +416,8 @@ public class GPU {
                 sprite.loadFromMemory();
                 if(!sprite.isEnabledForRendering() || !sprite.isVisible())
                     continue;
-                int y = lineY + scrollY;
-                int x = screenX + scrollX;
+                int y = lineY - scrollY;
+                int x = screenX - scrollX;
                 if(sprite.getScreenPositionX() <= x && sprite.getScreenPositionX()+spriteWidth-1 >= x) { // the vertical line intersects the sprite
                     if(sprite.getScreenPositionY() <= y && sprite.getScreenPositionY() +spriteHeight-1 >= y) { // the scan line intersects the sprite
                         int localSpriteX = x - sprite.getScreenPositionX();

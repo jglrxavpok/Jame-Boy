@@ -1,5 +1,7 @@
 package org.jglrxavpok.jameboy;
 
+import org.jglrxavpok.jameboy.cpu.Z80Timer;
+import org.jglrxavpok.jameboy.memory.BaseMemoryController;
 import org.jglrxavpok.jameboy.memory.Interrupts;
 import org.jglrxavpok.jameboy.memory.MemoryController;
 import org.jglrxavpok.jameboy.utils.BitUtils;
@@ -11,6 +13,7 @@ import org.jglrxavpok.jameboy.utils.BitUtils;
  */
 public class CPU {
 
+    private final Z80Timer timer;
     public int PC = 0x100;
     public int SP = 0;
     private int clockCycles = 0;
@@ -26,17 +29,33 @@ public class CPU {
     private boolean disableInterruptsNextInstruction;
     private boolean enableInterruptsNextInstruction;
     private boolean masterInterrupt;
+    private byte interruptFlagsSave;
+
+    public CPU() {
+        timer = new Z80Timer(this);
+    }
 
     public void setMemory(MemoryController memory) {
         this.memory = memory;
+        memory.setTimer(timer);
     }
 
     public int doCycle() {
         if (stop)
-            return -1;
-        int opcode = nextByte();
-        clockCycles = 0;
-        return executeOP(opcode);
+            return 0;
+        if(halted) {
+            byte currentInterruptFlags = memory.read(BaseMemoryController.ADDR_INTERRUPT_FLAG);
+            if(currentInterruptFlags != interruptFlagsSave) {
+                halted = false; // wake the CPU up
+            }
+        }
+
+        if(!halted) {
+            int opcode = nextByte();
+            clockCycles = executeOP(opcode);
+            timer.postCycles(clockCycles);
+        }
+        return clockCycles;
     }
 
     private int nextPart() {
@@ -1097,18 +1116,28 @@ public class CPU {
             } else if(memory.isInterruptOn(Interrupts.LCD_COINCIDENCE)) {
                 memory.resetInterrupt(Interrupts.LCD_COINCIDENCE);
                 handleLCDCoincidenceInterrupt();
-            }
-        } else {
-            if(memory.isInterruptOn(Interrupts.V_BLANK)) {
-//                System.out.println("v blank int0000 "+Integer.toHexString(PC).toUpperCase());
+            } else if(memory.isInterruptOn(Interrupts.TIMER)) {
+                memory.resetInterrupt(Interrupts.TIMER);
+                handleTimerInterrupt();
+            } else if(memory.isInterruptOn(Interrupts.JOYPAD)) {
+                memory.resetInterrupt(Interrupts.JOYPAD);
+                handleJoypadInterrupt();
             }
         }
 
         return clockCycles;
     }
 
-    private boolean debug_shouldPrintPC() {
-        return true;
+    private void handleJoypadInterrupt() {
+        masterInterrupt = false;
+        rst(0x60);
+        System.out.println("joypad int");
+    }
+
+    private void handleTimerInterrupt() {
+        masterInterrupt = false;
+        rst(0x50);
+        System.out.println("timer int");
     }
 
     private void op_SBC_A() {
@@ -1153,7 +1182,7 @@ public class CPU {
     }
 
     private void op_JP_HL_VALUE() {
-        PC = HL; // TODO: or PC = (HL) ? Seems not clear
+        PC = HL; // TODO: or PC = HL or PC = (HL) ? Seems not clear
         clockCycles = 4;
     }
 
@@ -1823,6 +1852,7 @@ public class CPU {
 
     private void op_HALT() {
         halted = true;
+        interruptFlagsSave = memory.read(BaseMemoryController.ADDR_INTERRUPT_FLAG);
         clockCycles = 4;
     }
 

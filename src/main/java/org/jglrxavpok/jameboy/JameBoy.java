@@ -12,7 +12,7 @@ import org.jglrxavpok.jameboy.memory.MemoryControllers;
 public class JameBoy {
 
     private final CPU cpu;
-    private final IOHandler ioHandler;
+    private IOHandler ioHandler;
     private GameROM currentROM;
     private MemoryController memoryController;
     private GPU gpu;
@@ -23,14 +23,13 @@ public class JameBoy {
     public JameBoy() {
         cpu = new CPU();
         gpu = new GPU();
-        ioHandler = new IOHandler();
     }
 
     public void loadROM(GameROM rom) {
         memoryController = MemoryControllers.create(rom);
         cpu.setMemory(memoryController);
         memoryController.setGPU(gpu);
-        memoryController.setIOHandler(ioHandler);
+        ioHandler = memoryController.getIOHandler();
         gpu.linkToMemory(memoryController);
         boot();
         currentROM = rom;

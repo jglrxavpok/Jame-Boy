@@ -1,11 +1,14 @@
 package org.jglrxavpok.jameboy.io;
 
 import org.jglrxavpok.jameboy.input.Keyboard;
+import org.jglrxavpok.jameboy.memory.Interrupts;
+import org.jglrxavpok.jameboy.memory.MemoryController;
 import org.jglrxavpok.jameboy.utils.BitUtils;
 
 public class IOHandler {
 
     public static final int ADDR_JOYPAD = 0xFF00;
+    private final MemoryController memory;
     private IOJoypadSelection selection = IOJoypadSelection.NONE;
     private boolean leftPressed;
     private boolean upPressed;
@@ -16,43 +19,46 @@ public class IOHandler {
     private boolean aPressed;
     private boolean bPressed;
 
+    public IOHandler(MemoryController memory) {
+        this.memory = memory;
+    }
+
     public void write(int address, byte value) {
         if(address == ADDR_JOYPAD) {
             if(BitUtils.getBit(value & 0xFF, 5) && !BitUtils.getBit(value & 0xFF, 4)) {
                 selection = IOJoypadSelection.DIRECTIONS;
             } else if(BitUtils.getBit(value & 0xFF, 4) && !BitUtils.getBit(value & 0xFF, 5)) {
                 selection = IOJoypadSelection.BUTTONS;
-            } else {
-                selection = IOJoypadSelection.NONE;
             }
         }
     }
 
     public byte read(int address) {
         if(address == ADDR_JOYPAD) {
-            byte val = (byte) 0xFF;
+            byte val = (byte) 0xCF;
+            val ^= 0b00110000;
             if(selection == IOJoypadSelection.DIRECTIONS) {
-                val &= (~(1<<4)) & 0xFF;
-                if(rightPressed)
-                    val &= (~(1<<1)) & 0xFF;
                 if(leftPressed)
+                    val &= (~(1<<1)) & 0xFF;
+                if(rightPressed)
                     val &= (~(0x1)) & 0xFF;
                 if(downPressed)
-                    val &= (~(1 << 2)) & 0xFF;
-                if(upPressed) {
                     val &= (~(1 << 3)) & 0xFF;
+                if(upPressed) {
+                    val &= (~(1 << 2)) & 0xFF;
                 }
             } else if(selection == IOJoypadSelection.BUTTONS) {
-                val &= (~(1<<5)) & 0xFF;
-                if(aPressed)
-                    val &= (~(1<<1)) & 0xFF;
                 if(bPressed)
+                    val &= (~(1<<1)) & 0xFF;
+                if(aPressed)
                     val &= (~(0x1)) & 0xFF;
                 if(selectPressed)
                     val &= (~(1 << 2)) & 0xFF;
                 if(startPressed) {
                     val &= (~(1 << 3)) & 0xFF;
                 }
+            } else {
+                return (byte) 0xFF;
             }
             return val;
         }
@@ -64,6 +70,7 @@ public class IOHandler {
     }
 
     public void setUpPressed(boolean upPressed) {
+        interruptIfBecamePressed(this.upPressed, upPressed);
         this.upPressed = upPressed;
     }
 
@@ -72,6 +79,7 @@ public class IOHandler {
     }
 
     public void setRightPressed(boolean rightPressed) {
+        interruptIfBecamePressed(this.rightPressed, rightPressed);
         this.rightPressed = rightPressed;
     }
 
@@ -80,6 +88,7 @@ public class IOHandler {
     }
 
     public void setDownPressed(boolean downPressed) {
+        interruptIfBecamePressed(this.downPressed, downPressed);
         this.downPressed = downPressed;
     }
 
@@ -88,6 +97,7 @@ public class IOHandler {
     }
 
     public void setStartPressed(boolean startPressed) {
+        interruptIfBecamePressed(this.startPressed, startPressed);
         this.startPressed = startPressed;
     }
 
@@ -96,6 +106,7 @@ public class IOHandler {
     }
 
     public void setSelectPressed(boolean selectPressed) {
+        interruptIfBecamePressed(this.selectPressed, selectPressed);
         this.selectPressed = selectPressed;
     }
 
@@ -104,6 +115,7 @@ public class IOHandler {
     }
 
     public void setAPressed(boolean aPressed) {
+        interruptIfBecamePressed(this.aPressed, aPressed);
         this.aPressed = aPressed;
     }
 
@@ -112,11 +124,19 @@ public class IOHandler {
     }
 
     public void setBPressed(boolean bPressed) {
+        interruptIfBecamePressed(this.bPressed, bPressed);
         this.bPressed = bPressed;
     }
 
     public void setLeftPressed(boolean leftPressed) {
+        interruptIfBecamePressed(this.leftPressed, leftPressed);
         this.leftPressed = leftPressed;
+    }
+
+    private void interruptIfBecamePressed(boolean old, boolean newValue) {
+        if(!old & newValue) { // was not pressed but now is
+            memory.interrupt(Interrupts.JOYPAD);
+        }
     }
 
     public boolean isLeftPressed() {
