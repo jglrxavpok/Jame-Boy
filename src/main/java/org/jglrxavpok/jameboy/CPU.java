@@ -1198,17 +1198,17 @@ public class CPU {
 
     private void op_EI() {
         // TODO: uncomment?
-        //enableInterruptsNextInstruction = true;
-        //disableInterruptsNextInstruction = false;
-        masterInterrupt = true;
+        enableInterruptsNextInstruction = true;
+        disableInterruptsNextInstruction = false;
+        //masterInterrupt = true;
         //System.out.println("ei "+Integer.toHexString(PC-1).toUpperCase());
         clockCycles = 4;
     }
 
     private void op_DI() {
-        //disableInterruptsNextInstruction = true;
-        //enableInterruptsNextInstruction = false;
-        masterInterrupt = false;
+        disableInterruptsNextInstruction = true;
+        enableInterruptsNextInstruction = false;
+        //masterInterrupt = false;
         //System.out.println("di "+Integer.toHexString(PC-1).toUpperCase());
         clockCycles = 4;
     }

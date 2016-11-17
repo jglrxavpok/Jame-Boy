@@ -1,6 +1,7 @@
 package org.jglrxavpok.jameboy;
 
 import org.jglrxavpok.jameboy.debug.DebuggerFrame;
+import org.jglrxavpok.jameboy.debug.MemoryViewFrame;
 import org.jglrxavpok.jameboy.graphics.old.Screen;
 import org.jglrxavpok.jameboy.input.Keyboard;
 import org.jglrxavpok.jameboy.io.IOHandler;
@@ -141,6 +142,7 @@ public class EmulatorThread extends Thread {
         }
 
         DebuggerFrame.getInstance().onUpdate();
+        MemoryViewFrame.getInstance().onUpdate();
     }
 
     public void render(Graphics g, float interpolation) {

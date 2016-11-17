@@ -145,7 +145,6 @@ public class MBC1 extends BaseMemoryController {
 
     private void updateCurrentROMBank() {
         romOffset = currentROMBank * 0x4000;
-        System.out.println("rom bank: "+currentROMBank);
     }
 
     @Override

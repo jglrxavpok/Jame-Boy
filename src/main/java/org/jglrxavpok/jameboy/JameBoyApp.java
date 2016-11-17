@@ -1,6 +1,7 @@
 package org.jglrxavpok.jameboy;
 
 import org.jglrxavpok.jameboy.debug.DebuggerFrame;
+import org.jglrxavpok.jameboy.debug.MemoryViewFrame;
 import org.jglrxavpok.jameboy.graphics.old.Screen;
 import org.jglrxavpok.jameboy.input.Keyboard;
 import org.jglrxavpok.jameboy.input.Mouse;
@@ -74,6 +75,13 @@ public class JameBoyApp {
             DebuggerFrame.getInstance().setVisible(true);
         });
         debuggingMenu.add(debugger);
+
+        MenuItem memoryView = new MenuItem("Memory view");
+        memoryView.addActionListener(e -> {
+            MemoryViewFrame.getInstance().setVisible(true);
+        });
+        debuggingMenu.add(debugger);
+        debuggingMenu.add(memoryView);
         bar.add(debuggingMenu);
         mainFrame.setMenuBar(bar);
         mainFrame.setVisible(true);
