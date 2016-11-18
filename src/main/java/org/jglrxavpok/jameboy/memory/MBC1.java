@@ -115,55 +115,47 @@ public class MBC1 extends BaseMemoryController {
 
     @Override
     public void write(int index, byte value) {
-        super.write(index, value);
         if(ramBankCount > 0 && index >= 0x0000 && index <= 0x1FFF) {
             enableRAM = (value & 0b00001111) == (byte)0xA;
-        }
-
-        if(index >= 0x2000 && index <= 0x3FFF) {
+        } else if(index >= 0x2000 && index <= 0x3FFF) {
             currentROMBank = value & 0x1F;
             if((value & 0xF) == 0)
                 currentROMBank++;
             updateCurrentROMBank();
-        }
-
-        if(index >= 0x4000 && index <= 0x5FFF) {
+        } else if(index >= 0x4000 && index <= 0x5FFF) {
             currentRAMBank = value & 0x03;
-        }
-
-        if(index >= 0x6000 && index <= 0x7FFF) {
+        } else if(index >= 0x6000 && index <= 0x7FFF) {
             inRamBankingMode = value == 0x1;
-        }
-
-        if(enableRAM && index >= 0xA000 && index <= 0xBFFF && ramBankCount > 0) {
+        } else if(enableRAM && index >= 0xA000 && index <= 0xBFFF && ramBankCount > 0) {
             int effectiveRAMBank = 0;
             if(inRamBankingMode)
                 effectiveRAMBank = currentRAMBank;
             ram.put(effectiveRAMBank * 0x2000 + (index-0xA000), value);
+        } else {
+            super.write(index, value);
         }
     }
 
     private void updateCurrentROMBank() {
         romOffset = currentROMBank * 0x4000;
+        if(currentROMBank == 0)
+            romOffset += 0x4000;
     }
 
     @Override
     public byte read(int index) {
         if(index >= 0x0000 && index <= 0x3FFF) {
             return rom.get(index & 0x3FFF);
-        }
-
-        if(index >= 0x4000 && index <= 0x7FFF) {
+        } else if(index >= 0x4000 && index <= 0x7FFF) {
             return rom.get((index-0x4000) + romOffset);
-        }
-
-        if(enableRAM && index >= 0xA000 && index <= 0xBFFF && ramBankCount > 0) {
+        } else if(enableRAM && index >= 0xA000 && index <= 0xBFFF && ramBankCount > 0) {
             int effectiveRAMBank = 0;
             if(inRamBankingMode)
                 effectiveRAMBank = currentRAMBank;
             return ram.get((index - 0xA000) + effectiveRAMBank * 0x2000);
+        } else {
+            return super.read(index);
         }
-        return super.read(index);
     }
 
 }

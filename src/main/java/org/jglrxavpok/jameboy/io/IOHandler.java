@@ -18,6 +18,7 @@ public class IOHandler {
     private boolean selectPressed;
     private boolean aPressed;
     private boolean bPressed;
+    private byte joypadTop;
 
     public IOHandler(MemoryController memory) {
         this.memory = memory;
@@ -30,6 +31,8 @@ public class IOHandler {
             } else if(BitUtils.getBit(value & 0xFF, 4) && !BitUtils.getBit(value & 0xFF, 5)) {
                 selection = IOJoypadSelection.BUTTONS;
             }
+
+            joypadTop = (byte) ((value & 0xC0) | 0xF);
         }
     }
 
@@ -60,7 +63,7 @@ public class IOHandler {
             } else {
                 return (byte) 0xFF;
             }
-            return val;
+            return (byte) (val & joypadTop);
         }
         return 0;
     }

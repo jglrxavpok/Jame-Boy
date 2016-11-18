@@ -14,9 +14,10 @@ public class NoMBC extends BaseMemoryController {
 
     @Override
     public void write(int index, byte value) {
-        super.write(index, value);
         if(index >= 0xA000 && index <= 0xBFFF) {
             ram.put(index - 0xA000, value);
+        } else {
+            super.write(index, value);
         }
     }
 
@@ -24,11 +25,10 @@ public class NoMBC extends BaseMemoryController {
     public byte read(int index) {
         if(index >= 0x0000 && index <= 0x7FFF) {
             return rom.get(index);
-        }
-
-        if(index >= 0xA000 && index <= 0xBFFF) {
+        } else if(index >= 0xA000 && index <= 0xBFFF) {
             return ram.get(index - 0xA000);
+        } else {
+            return super.read(index);
         }
-        return super.read(index);
     }
 }

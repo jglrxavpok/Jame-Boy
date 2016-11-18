@@ -1,5 +1,7 @@
 package org.jglrxavpok.jameboy;
 
+import org.jglrxavpok.jameboy.debug.DebugMemoryController;
+import org.jglrxavpok.jameboy.debug.MemoryViewFrame;
 import org.jglrxavpok.jameboy.graphics.GPU;
 import org.jglrxavpok.jameboy.io.IOHandler;
 import org.jglrxavpok.jameboy.memory.GameROM;
@@ -18,7 +20,6 @@ public class JameBoy {
     private GPU gpu;
     private boolean paused;
     private boolean shouldStep;
-    private org.jglrxavpok.jameboy.CPU CPU;
 
     public JameBoy() {
         cpu = new CPU();
@@ -26,13 +27,14 @@ public class JameBoy {
     }
 
     public void loadROM(GameROM rom) {
-        memoryController = MemoryControllers.create(rom);
+        memoryController = new DebugMemoryController(MemoryControllers.create(rom));
         cpu.setMemory(memoryController);
         memoryController.setGPU(gpu);
         ioHandler = memoryController.getIOHandler();
         gpu.linkToMemory(memoryController);
         boot();
         currentROM = rom;
+        MemoryViewFrame.getInstance().resetTable();
     }
 
     public void boot() {

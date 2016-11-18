@@ -23,7 +23,7 @@ public class MemoryViewFrame extends JFrame {
     }
 
     private void buildFrame() {
-        model = new DefaultTableModel((0xFFFF+1)/byteCount, byteCount+1);
+        model = new DefaultTableModel((0xFFFF+1)/(byteCount*byteCount), byteCount+1);
         JTable table = new JTable(model);
         String[] header = new String[byteCount*4+1];
         header[0] = "Base address";
@@ -42,21 +42,34 @@ public class MemoryViewFrame extends JFrame {
     public void onUpdate() {
         JameBoy core = JameBoyApp.emulator.getCore();
         if(core.getCurrentROM() != null) {
-            int row = 0;
-            for (int i = 0; i < (0xFFFF+1)/byteCount; i+=byteCount) {
-                model.setValueAt(String.format("%04X",i*byteCount), row, 0);
-                for (int byteIndex = 0; byteIndex < byteCount*4; byteIndex++) {
-                    byte value = (byte) 0xFF;
-                    try {
-                        value = core.getMemoryController().read(i*byteCount+byteIndex);
-                    } catch (Exception e) {
-                        // shhh
-                    }
-                    model.setValueAt(String.format("%02X",value & 0xFF).toUpperCase(), row, byteIndex+1);
-                }
-                row++;
-            }
             model.fireTableDataChanged();
         }
+    }
+
+    public void resetTable() {
+        int row = 0;
+        JameBoy core = JameBoyApp.emulator.getCore();
+        for (int i = 0; i < (0xFFFF+1)/byteCount; i+=byteCount) {
+            model.setValueAt(String.format("%04X",i*byteCount), row, 0);
+            for (int byteIndex = 0; byteIndex < byteCount*4; byteIndex++) {
+                byte value = (byte) 0xFF;
+                try {
+                    value = core.getMemoryController().read(i*byteCount+byteIndex);
+                } catch (Exception e) {
+                    // shhh
+                }
+                model.setValueAt(String.format("%02X",value & 0xFF).toUpperCase(), row, byteIndex+1);
+            }
+            row++;
+        }
+    }
+
+    public void updateValue(int address) {
+        byte value = JameBoyApp.emulator.getCore().getMemoryController().read(address);
+        int row = (address & 0xFFF0) / (byteCount*4);
+        int offset = address & 0xF;
+        model.setValueAt(String.format("%04X", address & 0xFFF0), row, 0);
+
+        model.setValueAt(String.format("%02X", value & 0xFF), row, offset+1);
     }
 }
