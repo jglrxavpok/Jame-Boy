@@ -267,8 +267,9 @@ public class GPU {
         }
         clockCount+=cycles;
 
-        if(coincidenceInterrupt && lineY == (lyc & 0xFF)) {
+        if(!thrownLCDInt && coincidenceInterrupt && lineY == (lyc & 0xFF)) {
             memory.interrupt(Interrupts.LCD_COINCIDENCE);
+            thrownLCDInt = true;
         }
 
         if(lineY >= 144) {
