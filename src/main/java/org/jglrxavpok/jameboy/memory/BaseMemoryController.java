@@ -1,5 +1,6 @@
 package org.jglrxavpok.jameboy.memory;
 
+import org.jglrxavpok.jameboy.audio.SoundController;
 import org.jglrxavpok.jameboy.cpu.Z80Timer;
 import org.jglrxavpok.jameboy.graphics.GPU;
 import org.jglrxavpok.jameboy.io.IOHandler;
@@ -11,6 +12,7 @@ public class BaseMemoryController implements MemoryController {
 
     public static final int ADDR_INTERRUPT_FLAG = 0xFF0F;
     public static final int ADDR_INTERRUPT_ENABLE = 0xFFFF;
+    private final SoundController soundController;
     private IOHandler ioHandler;
     private ByteBuffer internal8kbRAM = ByteBuffer.allocate(0xE000 - 0xC000 +1);
     private ByteBuffer highRAM = ByteBuffer.allocate(0xFFFF - 0xFF80 +1);
@@ -22,6 +24,7 @@ public class BaseMemoryController implements MemoryController {
 
     public BaseMemoryController() {
         ioHandler = new IOHandler(this);
+        soundController = new SoundController();
     }
 
     @Override
@@ -50,6 +53,8 @@ public class BaseMemoryController implements MemoryController {
             empty.put(index - 0xFF4C, value);
         } else if(index >= 0xFF80 && index < 0xFFFF) {
             highRAM.put(index - 0xFF80, value);
+        } else if(soundController.isValid(index)) {
+            soundController.write(index, value);
         } else {
           // TODO  System.err.println("[BaseMemoryController] Unknown write location: "+Integer.toHexString(index).toUpperCase());
         }
@@ -83,6 +88,9 @@ public class BaseMemoryController implements MemoryController {
         }
         else if(gpu.isValidGPUAddress(index)) {
             return gpu.read(index);
+        }
+        else if(soundController.isValid(index)) {
+            return soundController.read(index);
         }
         else {
             // TODO System.err.println("[BaseMemoryController] Unknown read location: "+Integer.toHexString(index).toUpperCase());

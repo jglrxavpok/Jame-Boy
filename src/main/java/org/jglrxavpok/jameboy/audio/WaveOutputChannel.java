@@ -11,6 +11,7 @@ public class WaveOutputChannel extends SoundChannel {
     private boolean restartSound;
     private boolean consecutiveSelection;
     private int highChannelFreq;
+    private int t1;
 
     public WaveOutputChannel(int startAddress) {
         super(startAddress);
@@ -22,7 +23,7 @@ public class WaveOutputChannel extends SoundChannel {
         if(offset == 0) { // NR30
             running = BitUtils.getBit(value, 7);
         } else if(offset == 1) { // NR31
-            int t1 = value & 0xFF;
+            t1 = value & 0xFF;
             soundLength = (256f-t1)*(1f/256f);
         } else if(offset == 2) { // NR32
             outputLevel = OutputLevel.values()[(value & 0x60) >> 5];
@@ -42,6 +43,25 @@ public class WaveOutputChannel extends SoundChannel {
 
     @Override
     public byte read(int address) {
+        int offset = address-startAddress;
+        if(offset == 0) {
+            if(running)
+                return (byte) (1 << 7);
+            return 0;
+        } else if(offset == 1) {
+            return (byte) t1;
+        } else if(offset == 2) {
+            return (byte) (outputLevel.ordinal() << 5);
+        } else if(offset == 3) {
+            return (byte) (lowerChannelFreq);
+        } else if(offset == 4) {
+            byte register = (byte) (highChannelFreq & 0x7);
+            if(consecutiveSelection)
+                register |= 1 << 6;
+            if(restartSound)
+                register |= 1 << 7;
+            return register;
+        }
         return 0;
     }
 
